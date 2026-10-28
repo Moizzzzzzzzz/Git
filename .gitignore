@@ -18,3 +18,4 @@ deploy/nginx/certs/*
 !apps/miniapp/.env.development
 !apps/miniapp/.env.production
 deploy/letsencrypt/
+*.local.md
