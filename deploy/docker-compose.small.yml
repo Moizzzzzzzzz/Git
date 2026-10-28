@@ -1,0 +1,56 @@
+# 小内存服务器叠加配置（约 2GB 内存的测试服务器，或不用 COS 的工厂本地服务器）
+# 在 docker-compose.yml 基础上：调低内存上限，并自建 MinIO 存照片（经 Nginx /fqc-media/ 访问）。
+# 使用：COMPOSE_FILE=deploy/docker-compose.yml:deploy/docker-compose.small.yml deploy/scripts/deploy.sh
+# .env 中需设置：
+#   STORAGE_PROVIDER=minio  STORAGE_ENDPOINT=http://minio:9000  STORAGE_PUBLIC_ENDPOINT=https://<域名>
+#   STORAGE_BUCKET=fqc-media  STORAGE_FORCE_PATH_STYLE=true  STORAGE_ACCESS_KEY_ID / SECRET（随机生成）
+# 建议另加 2GB swap。
+services:
+  postgres:
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=384MB
+      - -c
+      - max_connections=40
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=32MB
+    mem_limit: 512m
+
+  redis:
+    mem_limit: 160m
+
+  api:
+    environment:
+      NODE_OPTIONS: --max-old-space-size=384
+    mem_limit: 576m
+    depends_on:
+      minio: { condition: service_started }
+
+  minio:
+    # 官方 MinIO 镜像已停止在 Docker Hub 发布，见 docs/DECISIONS.md D-016
+    image: bitnamilegacy/minio:2025.4.22
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY_ID}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_ACCESS_KEY}
+      MINIO_DEFAULT_BUCKETS: ${STORAGE_BUCKET}
+      MINIO_BROWSER: "off"
+      TZ: Asia/Shanghai
+    volumes: [minio_data:/bitnami/minio/data]
+    mem_limit: 256m
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+  web:
+    volumes:
+      - ./nginx/minio-proxy.conf:/etc/nginx/fabricqc.d/minio-proxy.conf:ro
+    depends_on: [api, minio]
+
+volumes:
+  minio_data:

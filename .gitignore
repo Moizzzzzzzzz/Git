@@ -17,3 +17,4 @@ deploy/nginx/certs/*
 !deploy/nginx/certs/.gitkeep
 !apps/miniapp/.env.development
 !apps/miniapp/.env.production
+deploy/letsencrypt/

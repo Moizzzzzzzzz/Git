@@ -2,7 +2,7 @@
   "miniprogramRoot": "dist/",
   "projectname": "FabricQC",
   "description": "FabricQC 验布小程序",
-  "appid": "touristappid",
+  "appid": "wx6d58c8b58d9c8e78",
   "setting": {
     "urlCheck": true,
     "es6": false,

@@ -8,7 +8,11 @@ ENV_FILE="${ENV_FILE:-.env}"
 [ -f "$ENV_FILE" ] || { echo "找不到 $ENV_FILE" >&2; exit 1; }
 
 env_get() { grep -E "^$1=" "$ENV_FILE" | tail -1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//'; }
-dc() { docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"; }
+# COMPOSE_FILE 可用冒号分隔多个文件，例如 deploy/docker-compose.yml:deploy/docker-compose.small.yml
+COMPOSE_ARGS=()
+IFS=':' read -r -a _compose_files <<< "$COMPOSE_FILE"
+for f in "${_compose_files[@]}"; do COMPOSE_ARGS+=(-f "$f"); done
+dc() { docker compose "${COMPOSE_ARGS[@]}" --env-file "$ENV_FILE" "$@"; }
 
 PGUSER="$(env_get POSTGRES_USER)"
 PGDB="$(env_get POSTGRES_DB)"
