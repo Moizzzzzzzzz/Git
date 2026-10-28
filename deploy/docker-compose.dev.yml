@@ -1,0 +1,34 @@
+# 本地开发依赖：只监听 127.0.0.1，不对局域网开放
+name: fabricqc-dev
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      TZ: Asia/Shanghai
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: [pg_data_dev:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction"]
+    ports: ["127.0.0.1:6379:6379"]
+    volumes: [redis_data_dev:/data]
+  # 仅开发用 S3 兼容存储。MinIO 官方已停止发布 Docker 镜像，这里使用 Bitnami 存档镜像（见 DECISIONS D-016）
+  minio:
+    image: bitnamilegacy/minio:2025.4.22
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY_ID}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_ACCESS_KEY}
+      MINIO_DEFAULT_BUCKETS: ${STORAGE_BUCKET}
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+    volumes: [minio_data_dev:/bitnami/minio/data]
+volumes:
+  pg_data_dev:
+  redis_data_dev:
+  minio_data_dev:

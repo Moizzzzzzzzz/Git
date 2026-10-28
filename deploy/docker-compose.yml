@@ -1,0 +1,92 @@
+# FabricQC 生产编排（腾讯云轻量 4C4G / 工厂本地 Linux 服务器通用）
+# 使用：docker compose -f deploy/docker-compose.yml --env-file .env up -d --build
+# 数据库与 Redis 不映射任何宿主机端口，只在内部网络访问。
+name: fabricqc
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "20m", max-file: "5" }
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      TZ: Asia/Shanghai
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=768MB
+      - -c
+      - max_connections=60
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=64MB
+    volumes: [pg_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      retries: 10
+    mem_limit: 1g
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction"]
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 10
+    mem_limit: 192m
+    logging: *logging
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/api.Dockerfile
+      args:
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+    image: fabricqc-api:${APP_VERSION:-latest}
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public&connection_limit=10
+      REDIS_URL: redis://redis:6379
+      NODE_OPTIONS: --max-old-space-size=512
+      APP_VERSION: ${APP_VERSION:-0.1.0}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    mem_limit: 768m
+    logging: *logging
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+      args:
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+    image: fabricqc-web:${APP_VERSION:-latest}
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - ./nginx/verify:/usr/share/nginx/verify:ro
+      - certbot_www:/var/www/certbot:ro
+    depends_on: [api]
+    mem_limit: 64m
+    logging: *logging
+
+volumes:
+  pg_data:
+  redis_data:
+  certbot_www:

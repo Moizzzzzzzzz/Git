@@ -1,0 +1,880 @@
+// FabricQC 数据模型
+// 约定：UUID 主键；表名 snake_case（@@map）；列名 camelCase；所有时间为 timestamptz。
+// 枚举值必须与 packages/shared/src/enums.ts 一致。
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ 枚举 ============
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum RoleCode {
+  ADMIN
+  INSPECTOR
+  QC_SUPERVISOR
+  QUALITY_MANAGER
+  SALES
+}
+
+enum ClientType {
+  ADMIN_WEB
+  MINIAPP
+}
+
+enum InspectionMode {
+  MACHINE
+  MANUAL
+}
+
+enum InspectionScope {
+  FULL
+  PARTIAL
+  SAMPLING
+}
+
+enum RollStatus {
+  PENDING
+  ASSIGNED
+  IN_INSPECTION
+  SUBMITTED
+  RETURNED
+  PASSED
+  FAILED
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskRollStatus {
+  PENDING
+  IN_PROGRESS
+  SUBMITTED
+  RETURNED
+  DONE
+}
+
+enum InspectionStatus {
+  DRAFT
+  SUBMITTED
+  RETURNED
+  APPROVED
+  REJECTED
+  VOIDED
+}
+
+enum JudgeResult {
+  PASS
+  FAIL
+  INCONCLUSIVE
+  NOT_APPLICABLE
+}
+
+enum StandardKind {
+  FOUR_POINT
+  CUSTOMER
+}
+
+enum StandardVersionStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+}
+
+enum DefectSeverity {
+  MINOR
+  MAJOR
+  CRITICAL
+}
+
+enum ReviewDecision {
+  APPROVE
+  RETURN
+  REJECT
+}
+
+enum AssignmentStatus {
+  PENDING
+  DONE
+  CANCELLED
+}
+
+enum MediaStatus {
+  PENDING
+  UPLOADED
+  FAILED
+}
+
+enum MediaKind {
+  CHECKPOINT
+  DEFECT
+  GENERAL
+}
+
+enum OutboxStatus {
+  PENDING
+  ENQUEUED
+  DONE
+  FAILED
+}
+
+enum DeliveryStatus {
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum NotificationChannel {
+  IN_APP
+  WECHAT_SUBSCRIBE
+  WECOM
+}
+
+// ============ 组织与身份 ============
+
+model Department {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  name      String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  users     User[]
+  userRoles UserRole[]
+  tasks     QcTask[]
+
+  @@map("departments")
+}
+
+model User {
+  id               String     @id @default(uuid()) @db.Uuid
+  employeeNo       String     @unique
+  name             String
+  departmentId     String?    @db.Uuid
+  position         String?
+  phone            String?
+  status           UserStatus @default(ACTIVE)
+  /// PC 后台登录用户名（可空：纯小程序用户无需 PC 账号）
+  username         String?    @unique
+  passwordHash     String?
+  failedLoginCount Int        @default(0)
+  lockedUntil      DateTime?  @db.Timestamptz(3)
+  /// 直属主管，用于审核路由
+  supervisorId     String?    @db.Uuid
+  disabledAt       DateTime?  @db.Timestamptz(3)
+  createdAt        DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime   @updatedAt @db.Timestamptz(3)
+
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  supervisor   User?        @relation("UserSupervisor", fields: [supervisorId], references: [id])
+  subordinates User[]       @relation("UserSupervisor")
+  roles        UserRole[]
+  wechat       WechatIdentity[]
+  bindCodes    WechatBindCode[] @relation("BindCodeUser")
+  sessions     AuthSession[]
+
+  assignedTasks     QcTask[]            @relation("TaskAssignee")
+  reviewerTasks     QcTask[]            @relation("TaskReviewer")
+  createdTasks      QcTask[]            @relation("TaskCreator")
+  inspections       RollInspection[]
+  reviews           QcReview[]
+  reviewAssignments ReviewAssignment[]
+  notifications     Notification[]
+  subscriptions     WechatSubscription[]
+  media             MediaAsset[]
+
+  @@index([departmentId])
+  @@index([status])
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        RoleCode @unique
+  name        String
+  description String?
+
+  userRoles UserRole[]
+
+  @@map("roles")
+}
+
+/// 用户角色。departmentId 为空表示全厂范围；否则角色权限限定在该部门。
+model UserRole {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  roleId       String   @db.Uuid
+  departmentId String?  @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role        @relation(fields: [roleId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  @@unique([userId, roleId, departmentId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model WechatIdentity {
+  id          String    @id @default(uuid()) @db.Uuid
+  appId       String
+  openId      String
+  unionId     String?
+  userId      String    @db.Uuid
+  boundAt     DateTime  @default(now()) @db.Timestamptz(3)
+  lastLoginAt DateTime? @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, openId])
+  @@unique([appId, userId])
+  @@map("wechat_identities")
+}
+
+model WechatBindCode {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @db.Uuid
+  /// SHA-256(绑定码 + pepper)，不保存明文
+  codeHash       String    @unique
+  expiresAt      DateTime  @db.Timestamptz(3)
+  usedAt         DateTime? @db.Timestamptz(3)
+  revokedAt      DateTime? @db.Timestamptz(3)
+  failedAttempts Int       @default(0)
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  user User @relation("BindCodeUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("wechat_bind_codes")
+}
+
+model AuthSession {
+  id                       String     @id @default(uuid()) @db.Uuid
+  userId                   String     @db.Uuid
+  clientType               ClientType
+  refreshTokenHash         String     @unique
+  /// 上一个刷新令牌哈希，用于检测重放
+  previousRefreshTokenHash String?    @unique
+  expiresAt                DateTime   @db.Timestamptz(3)
+  revokedAt                DateTime?  @db.Timestamptz(3)
+  revokeReason             String?
+  lastUsedAt               DateTime?  @db.Timestamptz(3)
+  ip                       String?
+  userAgent                String?
+  createdAt                DateTime   @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@map("auth_sessions")
+}
+
+// ============ 基础资料 ============
+
+model Customer {
+  id           String   @id @default(uuid()) @db.Uuid
+  code         String   @unique
+  name         String
+  contactName  String?
+  contactPhone String?
+  notes        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  fabrics   Fabric[]
+  standards QualityStandard[]
+  orders    CustomerOrder[]
+  tasks     QcTask[]
+
+  @@map("customers")
+}
+
+/// 【预留】客户订单。V0.1 不提供界面，仅保证布卷可关联订单明细。
+model CustomerOrder {
+  id         String    @id @default(uuid()) @db.Uuid
+  orderNo    String    @unique
+  customerId String    @db.Uuid
+  orderDate  DateTime? @db.Date
+  notes      String?
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
+
+  customer Customer            @relation(fields: [customerId], references: [id])
+  lines    CustomerOrderLine[]
+
+  @@map("customer_orders")
+}
+
+/// 【预留】订单明细
+model CustomerOrderLine {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @db.Uuid
+  lineNo    Int
+  fabricId  String   @db.Uuid
+  quantityM Decimal? @db.Decimal(12, 2)
+  notes     String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  order  CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fabric Fabric        @relation(fields: [fabricId], references: [id])
+  rolls  FabricRoll[]
+
+  @@unique([orderId, lineNo])
+  @@map("customer_order_lines")
+}
+
+model Fabric {
+  id                         String   @id @default(uuid()) @db.Uuid
+  /// 面料货号
+  code                       String   @unique
+  nameZh                     String
+  nameEn                     String?
+  composition                String?
+  widthCm                    Decimal? @db.Decimal(8, 2)
+  cuttableWidthCm            Decimal? @db.Decimal(8, 2)
+  gsm                        Decimal? @db.Decimal(8, 2)
+  weaveStructure             String?
+  coatingType                String?
+  color                      String?
+  colorCode                  String?
+  customerId                 String?  @db.Uuid
+  defaultFourPointStandardId String?  @db.Uuid
+  defaultCustomerStandardId  String?  @db.Uuid
+  defaultTemplateId          String?  @db.Uuid
+  notes                      String?
+  isActive                   Boolean  @default(true)
+  createdAt                  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt                  DateTime @updatedAt @db.Timestamptz(3)
+
+  customer                 Customer?           @relation(fields: [customerId], references: [id])
+  defaultFourPointStandard QualityStandard?    @relation("FabricDefaultFourPoint", fields: [defaultFourPointStandardId], references: [id])
+  defaultCustomerStandard  QualityStandard?    @relation("FabricDefaultCustomer", fields: [defaultCustomerStandardId], references: [id])
+  defaultTemplate          InspectionTemplate? @relation(fields: [defaultTemplateId], references: [id])
+  lots                     ProductionLot[]
+  rolls                    FabricRoll[]
+  orderLines               CustomerOrderLine[]
+
+  @@index([customerId])
+  @@map("fabrics")
+}
+
+model ProductionLot {
+  id         String    @id @default(uuid()) @db.Uuid
+  fabricId   String    @db.Uuid
+  /// 生产批号
+  lotNo      String
+  /// 缸号（无则为空字符串，便于唯一约束）
+  dyeLotNo   String    @default("")
+  colorCode  String?
+  producedAt DateTime? @db.Date
+  notes      String?
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
+
+  fabric Fabric       @relation(fields: [fabricId], references: [id])
+  rolls  FabricRoll[]
+
+  @@unique([fabricId, lotNo, dyeLotNo])
+  @@map("production_lots")
+}
+
+model FabricRoll {
+  id             String     @id @default(uuid()) @db.Uuid
+  rollNo         String     @unique
+  /// 二维码标识（10 位 Crockford Base32）
+  qrCode         String     @unique
+  fabricId       String     @db.Uuid
+  lotId          String?    @db.Uuid
+  dyeLotNo       String?
+  colorCode      String?
+  nominalLengthM Decimal?   @db.Decimal(10, 2)
+  actualLengthM  Decimal?   @db.Decimal(10, 2)
+  status         RollStatus @default(PENDING)
+  /// 【预留】订单明细关联
+  orderLineId    String?    @db.Uuid
+  notes          String?
+  createdById    String?    @db.Uuid
+  createdAt      DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime   @updatedAt @db.Timestamptz(3)
+
+  fabric      Fabric             @relation(fields: [fabricId], references: [id])
+  lot         ProductionLot?     @relation(fields: [lotId], references: [id])
+  orderLine   CustomerOrderLine? @relation(fields: [orderLineId], references: [id])
+  taskRolls   QcTaskRoll[]
+  inspections RollInspection[]
+
+  @@index([fabricId])
+  @@index([lotId])
+  @@index([status])
+  @@map("fabric_rolls")
+}
+
+// ============ 质量标准与模板 ============
+
+model QualityStandard {
+  id          String       @id @default(uuid()) @db.Uuid
+  code        String       @unique
+  name        String
+  kind        StandardKind
+  customerId  String?      @db.Uuid
+  description String?
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
+
+  customer        Customer?         @relation(fields: [customerId], references: [id])
+  versions        StandardVersion[]
+  fabricsFourPt   Fabric[]          @relation("FabricDefaultFourPoint")
+  fabricsCustomer Fabric[]          @relation("FabricDefaultCustomer")
+  tasksFourPt     QcTask[]          @relation("TaskFourPointStandard")
+  tasksCustomer   QcTask[]          @relation("TaskCustomerStandard")
+
+  @@map("quality_standards")
+}
+
+/// 标准版本：发布后 rules 不可修改，只能新建版本
+model StandardVersion {
+  id            String                @id @default(uuid()) @db.Uuid
+  standardId    String                @db.Uuid
+  version       Int
+  status        StandardVersionStatus @default(DRAFT)
+  rules         Json
+  notes         String?
+  /// 开发默认值标记：未经工厂批准，不能作为正式验收依据
+  isDevDefault  Boolean               @default(false)
+  createdById   String?               @db.Uuid
+  publishedById String?               @db.Uuid
+  publishedAt   DateTime?             @db.Timestamptz(3)
+  createdAt     DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime              @updatedAt @db.Timestamptz(3)
+
+  standard          QualityStandard  @relation(fields: [standardId], references: [id])
+  fourPointInspects RollInspection[] @relation("InspectionFourPointVersion")
+  customerInspects  RollInspection[] @relation("InspectionCustomerVersion")
+
+  @@unique([standardId, version])
+  @@index([standardId, status])
+  @@map("standard_versions")
+}
+
+model InspectionTemplate {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  name        String
+  description String?
+  content     Json
+  version     Int      @default(1)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  fabrics Fabric[]
+  tasks   QcTask[]
+
+  @@map("inspection_templates")
+}
+
+model DefectType {
+  id              String         @id @default(uuid()) @db.Uuid
+  code            String         @unique
+  nameZh          String
+  nameEn          String?
+  category        String?
+  defaultSeverity DefectSeverity @default(MINOR)
+  sortOrder       Int            @default(100)
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime       @updatedAt @db.Timestamptz(3)
+
+  @@map("defect_types")
+}
+
+// ============ 任务与检验 ============
+
+model QcTask {
+  id                  String           @id @default(uuid()) @db.Uuid
+  taskNo              String           @unique
+  title               String
+  departmentId        String?          @db.Uuid
+  customerId          String?          @db.Uuid
+  assigneeId          String           @db.Uuid
+  reviewerId          String?          @db.Uuid
+  defaultMode         InspectionMode?
+  defaultScope        InspectionScope  @default(FULL)
+  fourPointStandardId String           @db.Uuid
+  customerStandardId  String?          @db.Uuid
+  templateId          String           @db.Uuid
+  status              TaskStatus       @default(OPEN)
+  dueAt               DateTime?        @db.Timestamptz(3)
+  notes               String?
+  createdById         String           @db.Uuid
+  createdAt           DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime         @updatedAt @db.Timestamptz(3)
+
+  department        Department?        @relation(fields: [departmentId], references: [id])
+  customer          Customer?          @relation(fields: [customerId], references: [id])
+  assignee          User               @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  reviewer          User?              @relation("TaskReviewer", fields: [reviewerId], references: [id])
+  createdBy         User               @relation("TaskCreator", fields: [createdById], references: [id])
+  fourPointStandard QualityStandard    @relation("TaskFourPointStandard", fields: [fourPointStandardId], references: [id])
+  customerStandard  QualityStandard?   @relation("TaskCustomerStandard", fields: [customerStandardId], references: [id])
+  template          InspectionTemplate @relation(fields: [templateId], references: [id])
+  rolls             QcTaskRoll[]
+  inspections       RollInspection[]
+
+  @@index([assigneeId, status])
+  @@index([status])
+  @@map("qc_tasks")
+}
+
+model QcTaskRoll {
+  id        String         @id @default(uuid()) @db.Uuid
+  taskId    String         @db.Uuid
+  rollId    String         @db.Uuid
+  status    TaskRollStatus @default(PENDING)
+  createdAt DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime       @updatedAt @db.Timestamptz(3)
+
+  task        QcTask           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  roll        FabricRoll       @relation(fields: [rollId], references: [id])
+  inspections RollInspection[]
+
+  @@unique([taskId, rollId])
+  @@index([rollId])
+  @@map("qc_task_rolls")
+}
+
+/// 布卷检验记录。提交后锁定；退回后可修改并以新修订号重新提交；审核完成后不可修改。
+model RollInspection {
+  id                   String           @id @default(uuid()) @db.Uuid
+  inspectionNo         String           @unique
+  taskId               String           @db.Uuid
+  taskRollId           String           @db.Uuid
+  rollId               String           @db.Uuid
+  inspectorId          String           @db.Uuid
+  mode                 InspectionMode
+  scope                InspectionScope
+  status               InspectionStatus @default(DRAFT)
+  /// 提交修订号：每次（重新）提交 +1
+  revision             Int              @default(0)
+  /// 草稿乐观锁版本：每次同步 +1
+  draftVersion         Int              @default(0)
+  /// 复验时指向上一条检验记录
+  previousInspectionId String?          @unique @db.Uuid
+  fourPointVersionId   String           @db.Uuid
+  customerVersionId    String?          @db.Uuid
+  /// 标准快照 { fourPoint: {versionId,name,rules}, customer: {...}|null }
+  standardSnapshot     Json
+  templateSnapshot     Json
+  /// 面料/布卷规格快照
+  specSnapshot         Json
+  checklistResults     Json             @default("[]")
+  resultSnapshot       Json?
+  fourPointResult      JudgeResult?
+  customerResult       JudgeResult?
+  overallResult        JudgeResult?
+  totalPoints          Decimal?         @db.Decimal(10, 3)
+  normalizedPoints     Decimal?         @db.Decimal(10, 2)
+  inspectedLengthM     Decimal?         @db.Decimal(10, 3)
+  actualLengthM        Decimal?         @db.Decimal(10, 2)
+  widthUsedCm          Decimal?         @db.Decimal(8, 3)
+  remarks              String?
+  startedAt            DateTime         @default(now()) @db.Timestamptz(3)
+  submittedAt          DateTime?        @db.Timestamptz(3)
+  decidedAt            DateTime?        @db.Timestamptz(3)
+  createdAt            DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime         @updatedAt @db.Timestamptz(3)
+
+  task               QcTask              @relation(fields: [taskId], references: [id])
+  taskRoll           QcTaskRoll          @relation(fields: [taskRollId], references: [id])
+  roll               FabricRoll          @relation(fields: [rollId], references: [id])
+  inspector          User                @relation(fields: [inspectorId], references: [id])
+  previous           RollInspection?     @relation("InspectionChain", fields: [previousInspectionId], references: [id])
+  next               RollInspection?     @relation("InspectionChain")
+  fourPointVersion   StandardVersion     @relation("InspectionFourPointVersion", fields: [fourPointVersionId], references: [id])
+  customerVersion    StandardVersion?    @relation("InspectionCustomerVersion", fields: [customerVersionId], references: [id])
+  segments           InspectionSegment[]
+  measurements       Measurement[]
+  defects            Defect[]
+  mediaLinks         MediaLink[]
+  revisions          InspectionRevision[]
+  reviews            QcReview[]
+  reviewAssignments  ReviewAssignment[]
+
+  @@index([rollId])
+  @@index([taskRollId])
+  @@index([inspectorId, status])
+  @@index([status, submittedAt])
+  @@map("roll_inspections")
+}
+
+/// 每次提交的完整不可变快照（质检记录版本）
+model InspectionRevision {
+  id             String   @id @default(uuid()) @db.Uuid
+  inspectionId   String   @db.Uuid
+  revision       Int
+  snapshot       Json
+  idempotencyKey String   @unique
+  submittedById  String   @db.Uuid
+  submittedAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  inspection RollInspection @relation(fields: [inspectionId], references: [id])
+
+  @@unique([inspectionId, revision])
+  @@map("inspection_revisions")
+}
+
+model InspectionSegment {
+  id           String  @id @default(uuid()) @db.Uuid
+  inspectionId String  @db.Uuid
+  seq          Int
+  startM       Decimal @db.Decimal(10, 3)
+  endM         Decimal @db.Decimal(10, 3)
+
+  inspection RollInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@unique([inspectionId, seq])
+  @@map("inspection_segments")
+}
+
+model Measurement {
+  id           String   @id @default(uuid()) @db.Uuid
+  inspectionId String   @db.Uuid
+  itemKey      String
+  seq          Int
+  value        Decimal  @db.Decimal(12, 3)
+  unit         String
+  positionM    Decimal? @db.Decimal(10, 3)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  inspection RollInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@unique([inspectionId, itemKey, seq])
+  @@map("measurements")
+}
+
+model Defect {
+  id              String         @id @default(uuid()) @db.Uuid
+  inspectionId    String         @db.Uuid
+  /// 客户端生成的 UUID，用于离线同步幂等
+  clientId        String         @db.Uuid
+  defectTypeCode  String
+  lengthCm        Decimal        @db.Decimal(10, 2)
+  widthCm         Decimal?       @db.Decimal(10, 2)
+  positionM       Decimal        @db.Decimal(10, 3)
+  widthPositionCm Decimal?       @db.Decimal(10, 2)
+  severity        DefectSeverity
+  /// 引擎计算扣分（封顶前）
+  points          Decimal?       @db.Decimal(8, 2)
+  remark          String?
+  createdAt       DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime       @updatedAt @db.Timestamptz(3)
+
+  inspection RollInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@unique([inspectionId, clientId])
+  @@index([defectTypeCode])
+  @@map("defects")
+}
+
+// ============ 媒体 ============
+
+model MediaAsset {
+  id           String      @id @default(uuid()) @db.Uuid
+  provider     String
+  bucket       String
+  objectKey    String      @unique
+  thumbKey     String?     @unique
+  mimeType     String
+  sizeBytes    Int?
+  status       MediaStatus @default(PENDING)
+  /// 上传意图所属检验（对象键前缀依据）
+  inspectionId String?     @db.Uuid
+  uploadedById String      @db.Uuid
+  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
+  confirmedAt  DateTime?   @db.Timestamptz(3)
+
+  uploadedBy User        @relation(fields: [uploadedById], references: [id])
+  links      MediaLink[]
+
+  @@index([inspectionId])
+  @@map("media_assets")
+}
+
+model MediaLink {
+  id             String    @id @default(uuid()) @db.Uuid
+  mediaId        String    @db.Uuid
+  inspectionId   String    @db.Uuid
+  kind           MediaKind
+  checkpointKey  String?
+  defectClientId String?   @db.Uuid
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  media      MediaAsset     @relation(fields: [mediaId], references: [id])
+  inspection RollInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@unique([mediaId, inspectionId])
+  @@index([inspectionId])
+  @@map("media_links")
+}
+
+// ============ 审核 ============
+
+model QcReview {
+  id           String         @id @default(uuid()) @db.Uuid
+  inspectionId String         @db.Uuid
+  revision     Int
+  reviewerId   String         @db.Uuid
+  decision     ReviewDecision
+  comment      String?
+  /// 系统判定不合格但审核通过（让步接收）
+  isConcession Boolean        @default(false)
+  createdAt    DateTime       @default(now()) @db.Timestamptz(3)
+
+  inspection RollInspection @relation(fields: [inspectionId], references: [id])
+  reviewer   User           @relation(fields: [reviewerId], references: [id])
+
+  /// 同一修订只能有一个审核结论
+  @@unique([inspectionId, revision])
+  @@map("qc_reviews")
+}
+
+model ReviewAssignment {
+  id           String           @id @default(uuid()) @db.Uuid
+  inspectionId String           @db.Uuid
+  revision     Int
+  assigneeId   String           @db.Uuid
+  status       AssignmentStatus @default(PENDING)
+  reviewId     String?          @db.Uuid
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  completedAt  DateTime?        @db.Timestamptz(3)
+
+  inspection RollInspection @relation(fields: [inspectionId], references: [id])
+  assignee   User           @relation(fields: [assigneeId], references: [id])
+
+  @@unique([inspectionId, revision, assigneeId])
+  @@index([assigneeId, status])
+  @@map("review_assignments")
+}
+
+// ============ 通知 ============
+
+/// 站内通知 / 待办
+model Notification {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  type       String
+  title      String
+  body       String
+  entityType String?
+  entityId   String?
+  /// 小程序页面路径
+  pagePath   String?
+  readAt     DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+/// Transactional Outbox：与业务数据同事务写入，由调度器投递到 BullMQ
+model NotificationOutbox {
+  id          String       @id @default(uuid()) @db.Uuid
+  eventType   String
+  payload     Json
+  dedupeKey   String       @unique
+  status      OutboxStatus @default(PENDING)
+  attempts    Int          @default(0)
+  lastError   String?
+  availableAt DateTime     @default(now()) @db.Timestamptz(3)
+  enqueuedAt  DateTime?    @db.Timestamptz(3)
+  processedAt DateTime?    @db.Timestamptz(3)
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+
+  deliveries NotificationDelivery[]
+
+  @@index([status, availableAt])
+  @@map("notification_outbox")
+}
+
+model NotificationDelivery {
+  id           String              @id @default(uuid()) @db.Uuid
+  outboxId     String              @db.Uuid
+  userId       String              @db.Uuid
+  channel      NotificationChannel
+  status       DeliveryStatus
+  templateId   String?
+  errorCode    String?
+  errorMessage String?
+  createdAt    DateTime            @default(now()) @db.Timestamptz(3)
+
+  outbox NotificationOutbox @relation(fields: [outboxId], references: [id], onDelete: Cascade)
+
+  @@index([outboxId])
+  @@index([userId])
+  @@map("notification_deliveries")
+}
+
+/// 微信一次性订阅消息授权余量（用户每次点"允许"+1，每次发送 -1）
+model WechatSubscription {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @db.Uuid
+  templateId     String
+  remaining      Int       @default(0)
+  lastAcceptedAt DateTime? @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, templateId])
+  @@map("wechat_subscriptions")
+}
+
+// ============ 审计与设置 ============
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @db.Uuid
+  action     String
+  entityType String
+  entityId   String?
+  before     Json?
+  after      Json?
+  ip         String?
+  userAgent  String?
+  requestId  String?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  key         String   @id
+  value       Json
+  updatedById String?  @db.Uuid
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("system_settings")
+}

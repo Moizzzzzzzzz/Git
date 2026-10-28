@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+**/coverage
+.git
+.env
+.env.*
+backups
+apps/miniapp
+deploy/nginx/certs
+*.log
