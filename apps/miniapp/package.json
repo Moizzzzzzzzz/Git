@@ -6,6 +6,7 @@
   "templateInfo": { "name": "default", "typescript": true, "css": "Sass", "framework": "React" },
   "scripts": {
     "build": "taro build --type weapp",
+    "build:staging": "taro build --type weapp --mode staging",
     "dev:weapp": "taro build --type weapp --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"

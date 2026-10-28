@@ -65,3 +65,13 @@
 - 背景：MinIO 官方已停止在 Docker Hub / quay.io 公开发布镜像（2026-10 实测拉取失败）。
 - 决策：本地开发使用 `bitnamilegacy/minio:2025.4.22`（存档镜像，支持 `MINIO_DEFAULT_BUCKETS` 自动建桶），**只用于开发联调**。生产使用腾讯云 COS。
 - 影响：将来迁移到工厂本地且不使用 COS 时，需要重新选型自托管 S3（如 SeaweedFS、Garage 或自行编译的 MinIO），`StorageAdapter` 无需修改，只改环境变量。
+
+## D-017 测试服务器：sslip.io 域名 + Let's Encrypt + 同域 MinIO
+- 背景：测试阶段还没有备案域名和 COS，服务器只有约 2GB 内存。
+- 决策：
+  - 域名用 `<IP>.sslip.io` 通配 DNS，证书由 Let's Encrypt 签发（`deploy/scripts/letsencrypt.sh`，每天检查续期）。
+  - MinIO 由 `deploy/docker-compose.small.yml` 启动，经 Nginx `/fqc-media/` 访问，保留原 Host 以通过预签名校验。这样小程序只需配置一个合法域名。
+  - 镜像在开发机构建后 `docker save/load` 上传，避免小内存服务器构建时内存不足。
+- 影响：
+  - sslip.io 是第三方免费服务，不承诺可用性，只用于测试；正式环境改用备案域名和 COS，只改 `.env`，代码不变。
+  - 服务器 IP 不写进仓库：小程序测试构建用被 git 忽略的 `apps/miniapp/.env.staging`。

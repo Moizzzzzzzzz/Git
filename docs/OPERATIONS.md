@@ -85,6 +85,37 @@ deploy/scripts/deploy.sh --seed
 - 升级：`git pull && deploy/scripts/deploy.sh`（API 启动时自动执行 `prisma migrate deploy`，只应用新迁移）。
 - 日志：`docker compose -f deploy/docker-compose.yml --env-file .env logs -f api`
 
+### 3.1 小内存测试服务器（约 2GB 内存，自建 MinIO，无备案域名）
+
+适合在拿到 COS 和备案域名之前先搭一套能用的测试环境。
+
+- 域名：没有自己的域名时可用免费通配 DNS `<IP 用横线连接>.sslip.io`（如 `1-2-3-4.sslip.io` 指向 1.2.3.4）。服务器重启后 IP 若会变化，先在云控制台绑定静态 IP。
+- 防火墙只开 22、80、443。
+- 照片存储：`deploy/docker-compose.small.yml` 自带 MinIO，经 Nginx 的 `/fqc-media/` 与 API 共用同一域名和证书；数据库备份不含照片，MinIO 数据在 Docker 卷 `fabricqc_minio_data`。
+- 内存：叠加配置把各服务上限压到约 1.7GB，另建 2GB swap。
+
+```bash
+export COMPOSE_FILE=deploy/docker-compose.yml:deploy/docker-compose.small.yml
+# .env：NODE_ENV=production、COOKIE_SECURE=true、PUBLIC_BASE_URL/CORS_ORIGINS/QR_BASE_URL=https://<域名>
+#       STORAGE_PROVIDER=minio、STORAGE_ENDPOINT=http://minio:9000、STORAGE_PUBLIC_ENDPOINT=https://<域名>
+#       STORAGE_REGION=us-east-1、STORAGE_BUCKET=fqc-media、STORAGE_FORCE_PATH_STYLE=true、存储密钥随机生成
+deploy/scripts/letsencrypt.sh issue <域名>     # 首次签发证书（80 端口需空闲）
+SKIP_BUILD=1 deploy/scripts/deploy.sh --seed     # 使用已导入的镜像启动（或去掉 SKIP_BUILD 在服务器上构建）
+deploy/scripts/set-env.sh WECHAT_APP_SECRET      # 输入不回显，写入 .env 并重启 API
+```
+
+小内存服务器上构建镜像容易内存不足，可在开发机构建后传上去：
+
+```bash
+docker buildx build --platform linux/amd64 -f deploy/api.Dockerfile -t fabricqc-api:latest --load .
+docker buildx build --platform linux/amd64 -f deploy/web.Dockerfile -t fabricqc-web:latest --load .
+docker save fabricqc-api:latest fabricqc-web:latest | gzip | ssh <服务器> 'gunzip | docker load'
+```
+
+定时任务（crontab）：每天 02:00 备份数据库，03:15 检查证书续期，命令同上并带 `COMPOSE_FILE`。
+
+小程序指向测试服务器：在 `apps/miniapp/.env.staging`（已被 git 忽略）写 `TARO_APP_API_BASE_URL=https://<域名>/api`，然后 `pnpm --filter @fabricqc/miniapp build:staging`。
+
 ## 4. 备份与恢复
 
 ```bash

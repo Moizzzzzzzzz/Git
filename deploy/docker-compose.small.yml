@@ -42,7 +42,8 @@ services:
       MINIO_BROWSER: "off"
       TZ: Asia/Shanghai
     volumes: [minio_data:/bitnami/minio/data]
-    mem_limit: 256m
+    # MinIO 空闲约 200MB
+    mem_limit: 384m
     logging:
       driver: json-file
       options: { max-size: "20m", max-file: "5" }
