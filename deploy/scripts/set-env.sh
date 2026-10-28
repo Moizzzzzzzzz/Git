@@ -24,5 +24,5 @@ open(path, 'w', encoding='utf-8').write('\n'.join(lines) + '\n')
 EOF
 chmod 600 "$ENV_FILE"
 echo "已更新 $key，正在重启 API…"
-dc up -d --no-build api
+dc up -d --no-build --force-recreate api
 echo "完成"
