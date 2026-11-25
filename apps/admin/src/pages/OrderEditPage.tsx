@@ -1,0 +1,26 @@
+import {useQuery} from '@tanstack/react-query';
+import {useEffect,useState} from 'react';
+import {Link,useNavigate,useParams} from 'react-router-dom';
+import {Button} from '@/components/ui/button';
+import {Card,CardContent} from '@/components/ui/card';
+import {Input,NativeSelect} from '@/components/ui/input';
+import {Field} from '@/components/ui/label';
+import {PageHeader,QueryState} from '@/components/common';
+import {api} from '@/lib/api';
+import {useAuth} from '@/lib/auth';
+import {useAction} from '@/lib/hooks';
+import {changedOrderPlan,emptyLine,emptyOrderForm,orderFormFromDetail,PLAN_NAMES,toOrderInput,type LineForm,type OrderDetail,type OrderForm,type OrderOptions} from '@/lib/orders';
+export function OrderEditPage(){
+ const {id}=useParams();const {me}=useAuth();const nav=useNavigate();const [form,setForm]=useState(emptyOrderForm);const [loaded,setLoaded]=useState<string|null>(null);
+ const options=useQuery({queryKey:['order-options',me?.id,id],queryFn:()=>api.get<OrderOptions>(id?`/orders/${id}/options`:'/orders/options')});
+ const detail=useQuery({queryKey:['order',me?.id,id],queryFn:()=>api.get<OrderDetail>(`/orders/${id}`),enabled:!!id});
+ useEffect(()=>{if(detail.data&&loaded!==id){setForm(orderFormFromDetail(detail.data));setLoaded(id??null);}},[detail.data,id,loaded]);
+ const save=useAction(async()=>{const body=toOrderInput(form);return id?api.put<{id:string}>(`/orders/${id}`,{supervisorId:body.supervisorId,fourPointStandardId:body.fourPointStandardId,templateId:body.templateId,dueAt:body.dueAt,plan:detail.data?changedOrderPlan(form,detail.data):undefined,version:detail.data?.order.version,lines:body.lines.map((l,i)=>({...l,...(form.lines[i].id?{id:form.lines[i].id}:{})}))}):api.post<{id:string}>('/orders',body);},{success:id?'订单资料已更新':'订单已下发给质检主管',invalidate:[['orders'],['order']],onSuccess:r=>nav(`/orders/${r.id??id}`)});
+ const set=(k:keyof OrderForm,value:unknown)=>setForm(f=>({...f,[k]:value}));
+ const line=(n:number,k:keyof LineForm,v:string)=>setForm(f=>({...f,lines:f.lines.map((l,i)=>i===n?{...l,[k]:v}:l)}));
+ const select=(label:string,key:'businessDepartmentId'|'supervisorId'|'fourPointStandardId'|'templateId',items:{id:string;name:string}[],required=false)=><Field label={label} required={required}><NativeSelect disabled={!!id&&key==='businessDepartmentId'} value={form[key]} onChange={e=>set(key,e.target.value)}><option value="">请选择</option>{items.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</NativeSelect></Field>;
+ if(id&&detail.isPending)return <p>正在加载订单…</p>;
+ if(id&&detail.error)return <QueryState q={detail}>{null}</QueryState>;
+ if(id&&detail.data&&!detail.data.capabilities.canEdit)return <p>当前订单不可编辑，请返回订单详情。</p>;
+ return <><PageHeader title={id?'修改订单资料':'新建 H 号订单'} actions={<Button asChild variant="outline"><Link to={id?`/orders/${id}`:'/orders'}>返回</Link></Button>}/><QueryState q={options}>{options.data&&<div className="space-y-4"><Card><CardContent className="grid gap-4 p-5 md:grid-cols-2"><Field label="VCANS 公司订单 H 号" required><Input value={form.hNo} disabled={!!id} maxLength={100} onChange={e=>set('hNo',e.target.value)}/></Field>{select('业务部门','businessDepartmentId',options.data.departments,true)}{select('质检主管','supervisorId',options.data.supervisors,true)}<Field label="验布截止日期"><Input type="date" value={form.dueDate} onChange={e=>set('dueDate',e.target.value)}/></Field><Field label="检验方式"><NativeSelect value={form.planMode} onChange={e=>set('planMode',e.target.value)}>{Object.entries(PLAN_NAMES).map(([k,v])=><option key={k} value={k}>{v}</option>)}</NativeSelect></Field>{form.planMode!=='FULL'&&<Field label={form.planMode==='FIXED_PER_LOT'?'每缸抽检卷数':'每缸抽检比例（%）'} required><Input inputMode="decimal" value={form.sampleValue} onChange={e=>set('sampleValue',e.target.value)}/></Field>}{select('检验标准','fourPointStandardId',options.data.standards??[])}{select('检验模板','templateId',options.data.templates??[])}{options.data.standards?.find(s=>s.id===form.fourPointStandardId)?.isDevDefault&&<p className="text-amber-700 md:col-span-2">当前为开发测试标准，未经正式确认。</p>}<p className="text-sm text-muted-foreground md:col-span-2">实际缸号、卷数和卷号由质检人员到厂登记；订单量不作为卷数。</p></CardContent></Card>{form.lines.map((l,n)=><Card key={l.id??n}><CardContent className="space-y-4 p-5"><div className="flex justify-between"><h2 className="font-semibold">明细 {n+1}</h2>{!id&&form.lines.length>1&&<Button variant="ghost" onClick={()=>set('lines',form.lines.filter((_,i)=>i!==n))}>移除</Button>}</div><div className="grid gap-4 md:grid-cols-2">{([['customerOrderNo','客户订单号'],['productName','品名'],['productCode','物料号'],['specification','规格'],['color','颜色'],['quantity','订单量']] as const).map(([k,label])=><Field key={k} label={label}><Input value={l[k]} onChange={e=>line(n,k,e.target.value)}/></Field>)}<Field label="订单单位"><NativeSelect value={l.quantityUnit} onChange={e=>line(n,'quantityUnit',e.target.value)}><option value="">请选择</option>{['米','公斤','码'].map(v=><option key={v}>{v}</option>)}</NativeSelect></Field></div></CardContent></Card>)}{!id&&<Button variant="outline" onClick={()=>set('lines',[...form.lines,emptyLine()])}>＋ 添加明细</Button>}<div><Button loading={save.isPending} disabled={save.isPending} onClick={()=>save.mutate(undefined)}>{id?'保存修改':'下单给质检主管'}</Button></div></div>}</QueryState></>;
+}

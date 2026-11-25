@@ -1,0 +1,13 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+const h=vi.hoisted(()=>({navigate:vi.fn(),ordinary:vi.fn()}));
+vi.mock('@tarojs/taro',()=>({default:{navigateTo:h.navigate}}));
+vi.mock('../src/lib/scan',()=>({openTaskRoll:h.ordinary}));
+import {openOrderRoll} from '../src/lib/order-roll-navigation';
+import type {OrderRoll} from '../src/lib/orders';
+const roll={id:'or1',rollNo:'R 1',selections:[{kind:'ADDITIONAL',inspectionId:null}]} as OrderRoll;
+const task={taskRollId:'tr1',status:'PENDING',task:{id:'t1',taskNo:'T1',title:'TEST',defaultMode:'BOTH',defaultScope:'FULL'},inspection:{id:'old',status:'APPROVED'}};
+beforeEach(()=>{h.navigate.mockReset();h.ordinary.mockReset();});
+it('opens a new start screen for pending H additional decision instead of old approved result',async()=>{await openOrderRoll(roll,'t1',[task]);expect(h.navigate).toHaveBeenCalledWith({url:'/pages/start/index?taskRollId=tr1&rollNo=R%201&mode=BOTH&scope=FULL'});expect(h.ordinary).not.toHaveBeenCalled();});
+it('resumes an existing draft or submitted inspection and never auto-creates another',async()=>{for(const status of ['DRAFT','RETURNED','SUBMITTED'])await openOrderRoll(roll,'t1',[{...task,inspection:{id:'active',status}}]);expect(h.ordinary).toHaveBeenCalledTimes(3);expect(h.navigate).not.toHaveBeenCalled();});
+it('requires current assignment and pending task state before offering a new start',async()=>{await expect(openOrderRoll(roll,'other',[task])).rejects.toThrow('分配');await expect(openOrderRoll(roll,'t1',[{...task,status:'DONE'}])).rejects.toThrow('状态');expect(h.navigate).not.toHaveBeenCalled();});
+it('does not infer an additional decision when it is already bound or missing',async()=>{for(const selections of [[{kind:'ADDITIONAL',inspectionId:'bound'}],[]])await openOrderRoll({...roll,selections},'t1',[task]);expect(h.ordinary).toHaveBeenCalledTimes(2);expect(h.navigate).not.toHaveBeenCalled();});

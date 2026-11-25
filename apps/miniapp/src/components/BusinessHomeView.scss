@@ -1,0 +1,29 @@
+ .business-home { padding-top:24px; }
+.business-search { display:flex; align-items:center; gap:18px; height:88px; padding:0 24px; border:1px solid var(--field-border); border-radius:28px; background:var(--color-background-surface); box-sizing:border-box; }
+.business-search-icon { width:28px; height:28px; border:3px solid var(--text-secondary); border-radius:50%; position:relative; flex-shrink:0; }
+.business-search-icon::after { content:''; position:absolute; width:15px; height:3px; background:var(--text-secondary); right:-11px; bottom:-5px; transform:rotate(45deg); }
+.business-search-input { min-width:0; flex:1; height:80px; font-size:28px; color:var(--text-primary); font-weight:400; }
+.business-search-clear { background:transparent; color:var(--text-secondary); padding:10px 0 10px 8px; margin:0; line-height:1.5; font-size:24px; }
+.business-search-clear[disabled] { visibility:hidden; }.business-search-clear::after { border:0; }
+.business-create { margin-top:24px; min-height:84px; padding:18px 24px; font-size:30px; }
+.business-section-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:32px 0 18px; font-size:32px; font-weight:500; }
+.business-overview { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); padding:24px 8px; border-radius:26px; background:var(--color-background-surface); }
+.business-stat { display:flex; align-items:center; flex-direction:column; gap:10px; padding:0 6px; margin:0; border-radius:0; background:transparent; line-height:1.4; color:var(--text-primary); min-width:0; }
+.business-stat + .business-stat { border-left:1px solid var(--color-border); }.business-stat::after { border:0; }.business-stat[disabled] { color:var(--text-secondary); background:transparent; }
+.business-stat-count { color:var(--color-accent); font-size:40px; font-weight:500; }.business-stat-label { font-size:25px; font-weight:400; }
+.business-more { background:transparent; padding:0; margin:0; color:var(--text-secondary); font-size:26px; font-weight:400; line-height:1.5; }.business-more::after { border:0; }
+.business-task-list,.business-follow-list { padding:0 26px; border-radius:26px; background:var(--color-background-surface); }
+.business-task-row { padding:24px 0; }.business-task-row + .business-task-row,.business-follow-row + .business-follow-row { border-top:1px solid var(--color-border); }
+.business-task-top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }.business-task-title { font-size:30px; font-weight:500; line-height:1.45; overflow-wrap:anywhere; min-width:0; flex:1; }
+.business-task-meta { font-size:26px; line-height:1.5; color:var(--text-secondary); margin-top:6px; overflow-wrap:anywhere; }
+.business-task-progress { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; font-size:26px; margin-top:6px; color:var(--text-secondary); }
+.business-result { color:var(--color-text-accent); }
+.business-progress-track { height:10px; background:var(--color-border); border-radius:99px; margin-top:14px; overflow:hidden; }.business-progress-fill { height:100%; background:var(--color-accent); border-radius:99px; }
+.business-follow-row { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:24px 0; }.business-follow-copy { min-width:0; flex:1; }
+.business-remind { margin:0; padding:12px 18px; line-height:1.4; border:1px solid var(--color-accent); border-radius:16px; color:var(--color-text-accent); background:white; font-size:26px; flex-shrink:0; }.business-remind::after { border:0; }
+.business-empty-card { border-radius:26px; background:var(--color-background-surface); padding:28px; color:var(--text-secondary); font-size:26px; }
+.business-retry { margin-top:16px; }.business-notice { margin-top:20px; }
+.business-qc-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; background:var(--color-background-surface); border-radius:26px; padding:20px; }.business-qc-item { background:transparent; color:var(--text-primary); font-size:26px; line-height:1.5; padding:16px 4px; margin:0; }.business-qc-item::after { border:0; }
+.business-list-title { font-size:34px; font-weight:600; margin-bottom:24px; }.business-list-filter { flex-wrap:wrap; display:flex; justify-content:space-between; gap:16px; align-items:center; margin:24px 0; font-size:26px; color:var(--text-secondary); }
+
+.business-list-filter .tag { margin:0; border:0; }.business-list-filter .tag::after { border:0; }
