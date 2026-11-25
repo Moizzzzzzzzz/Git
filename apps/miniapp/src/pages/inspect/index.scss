@@ -1,0 +1,15 @@
+.inspect {
+  .head { background:var(--color-background-surface); color:var(--text-primary); padding:32px 30px; border-radius:0 0 30px 30px; }
+  .head .muted { color:var(--text-primary); font-size:26px; margin-top:8px; }
+  .roll-no { font-size:36px; font-weight:500; letter-spacing:.5px; }
+  .link { color:var(--color-text-accent); margin-left:16px; text-decoration:underline; }
+  .tabs { white-space:nowrap; background:#fff; border-bottom:1px solid var(--color-border); position:sticky; top:0; z-index:5; }
+  .tab { display:inline-block; padding:24px 27px; font-size:28px; color:var(--text-secondary); }
+  .tab.active { color:var(--brand-primary); font-weight:500; border-bottom:5px solid var(--color-accent); }
+  .req { color:#d74343; margin-left:6px; }
+  .flex1 { flex:1; min-width:0; }
+  .seg-row { margin-bottom:16px; }
+  .readings { display:flex; flex-wrap:wrap; gap:14px; margin-top:18px; }
+  .reading { width:190px; text-align:center; }
+  .defect-name { font-size:32px; font-weight:500; }
+}

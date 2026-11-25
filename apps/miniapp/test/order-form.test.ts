@@ -1,0 +1,8 @@
+import {describe,expect,it} from 'vitest';
+import {emptyOrderForm,toOrderInput,canCreateOrder,displayQuantity} from '../src/lib/orders';
+describe('H order form',()=>{
+ it('keeps customer orders separate and does not invent physical rolls from kg',()=>{const f=emptyOrderForm();Object.assign(f,{hNo:' h-001 ',businessDepartmentId:'d',supervisorId:'s',planMode:'FIXED_PER_LOT',sampleValue:'2'});f.lines=[{...f.lines[0],customerOrderNo:'PO-A',quantity:'100',quantityUnit:'公斤'},{...f.lines[0],customerOrderNo:'PO-B',quantity:'200',quantityUnit:'米'}];const r=toOrderInput(f);expect(r.hNo).toBe('H-001');expect(r.lines.map(x=>x.customerOrderNo)).toEqual(['PO-A','PO-B']);expect(r.lines.map(x=>x.quantityUnit)).toEqual(['公斤','米']);expect(r).not.toHaveProperty('plannedRollCount');expect(r.plan).toEqual({mode:'FIXED_PER_LOT',fixedRolls:2});});
+ it('requires explicit valid numbers and department and supervisor',()=>{const f=emptyOrderForm();expect(()=>toOrderInput(f)).toThrow();Object.assign(f,{hNo:'H-1',businessDepartmentId:'d',supervisorId:'s',planMode:'PERCENT_PER_LOT',sampleValue:'0'});expect(()=>toOrderInput(f)).toThrow();f.sampleValue='33.3333';expect(toOrderInput(f).plan).toEqual({mode:'PERCENT_PER_LOT',percent:'33.3333'});f.lines[0].quantity='-1';expect(()=>toOrderInput(f)).toThrow();});
+ it('all three business roles may create, inspector does not gain business powers',()=>{expect(canCreateOrder(['BUSINESS_CLERK'])).toBe(true);expect(canCreateOrder(['BUSINESS_MANAGER'])).toBe(true);expect(canCreateOrder(['SALES'])).toBe(true);expect(canCreateOrder(['INSPECTOR'])).toBe(false);});
+ it('shows unmeasured quantity as blank marker rather than zero',()=>{expect(displayQuantity(null,'kg')).toBe('—');expect(displayQuantity('0','kg')).toBe('0 kg');});
+});

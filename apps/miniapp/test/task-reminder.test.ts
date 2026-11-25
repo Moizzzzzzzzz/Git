@@ -1,0 +1,7 @@
+import {describe,it,expect,vi} from 'vitest';
+import {createTaskReminder} from '../src/lib/task-reminder';
+describe('reminder request safety and server-owned cooldown',()=>{
+ it('keeps an idempotency key on network failure and rotates only after success',async()=>{let n=0;const send=vi.fn().mockRejectedValueOnce(new Error('network')).mockResolvedValue({accepted:true});const c=createTaskReminder(send,()=>`key-${++n}`);await expect(c.run('task')).rejects.toThrow('network');expect(c.busy).toBe(false);await c.run('task');await c.run('task');expect(send.mock.calls).toEqual([['task','key-1'],['task','key-1'],['task','key-2']]);});
+ it('suppresses double taps before rendering can disable the button',async()=>{let release:()=>void=()=>{};const send=vi.fn(()=>new Promise<void>(r=>{release=r;}));const c=createTaskReminder(send,()=> 'key');const first=c.run('task');expect(c.busy).toBe(true);expect(await c.run('other')).toBe(false);expect(send).toHaveBeenCalledTimes(1);release();expect(await first).toBe(true);});
+ it('propagates an actual server cooldown failure and permits later retry',async()=>{const cooldown=Object.assign(new Error('5分钟内请勿重复催审'),{status:409});const send=vi.fn().mockRejectedValueOnce(cooldown).mockResolvedValue({accepted:true});const c=createTaskReminder(send,()=> 'key');await expect(c.run('task')).rejects.toBe(cooldown);expect(c.busy).toBe(false);expect(await c.run('task')).toBe(true);});
+});
