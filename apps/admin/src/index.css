@@ -1,0 +1,82 @@
+@import '@astryxdesign/core/reset.css';
+@import '@astryxdesign/core/astryx.css';
+
+@layer tw-preflight {
+  @tailwind base;
+}
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --background: 220 14% 96%;
+    --foreground: 220 12% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 12% 15%;
+    --primary: 216 75% 43%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 10% 91%;
+    --secondary-foreground: 220 10% 20%;
+    --muted: 220 10% 93%;
+    --muted-foreground: 220 7% 38%;
+    --placeholder: #627083;
+    --accent: 215 76% 95%;
+    --accent-foreground: 216 75% 33%;
+    --destructive: 0 44% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 145 25% 32%;
+    --warning: 38 35% 33%;
+    --border: 220 8% 84%;
+    --input: 220 8% 72%;
+    --ring: 220 8% 42%;
+    --radius: 0.625rem;
+  }
+  .dark {
+    color-scheme: dark;
+    --background: 240 6% 6%;
+    --foreground: 0 0% 91%;
+    --card: 240 4% 9%;
+    --card-foreground: 0 0% 91%;
+    --primary: 220 8% 80%;
+    --primary-foreground: 240 6% 8%;
+    --secondary: 240 3% 16%;
+    --secondary-foreground: 0 0% 89%;
+    --muted: 240 3% 14%;
+    --muted-foreground: 220 5% 68%;
+    --placeholder: #a7b6c8;
+    --accent: 240 3% 19%;
+    --accent-foreground: 0 0% 94%;
+    --destructive: 0 19% 39%;
+    --destructive-foreground: 0 0% 96%;
+    --success: 145 18% 60%;
+    --warning: 38 20% 65%;
+    --border: 240 3% 22%;
+    --input: 240 3% 27%;
+    --ring: 220 6% 65%;
+    --radius: 0.625rem;
+  }
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    line-height: 1.5;
+    font-feature-settings: 'tnum';
+  }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; color: black; color-scheme: light; }
+}
+
+@layer components {
+  .form-control { box-sizing: border-box; min-width: 0; color: hsl(var(--foreground)); font-weight: 400; line-height: 1.5; }
+  .form-control::placeholder { color: var(--placeholder); opacity: 1; }
+  .form-control[data-placeholder="true"] { color: var(--placeholder); }
+  .form-control option { color: hsl(var(--foreground)); background: hsl(var(--card)); }
+}
+
+.account-menu { display:flex; flex-direction:column; align-items:flex-start; gap:var(--spacing-1); padding:var(--spacing-2) var(--spacing-3); border-radius:var(--radius-element); }
+.account-menu:hover { background:var(--color-background-muted); }

@@ -1,0 +1,7 @@
+.demo-context-bar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:14px 28px; background:var(--color-accent-muted); color:var(--text-primary); font-size:25px; border-bottom:1px solid var(--color-border); }
+.demo-context-bar > text { flex:1; min-width:150px; }
+.demo-inline { margin:0; padding:4px 10px; background:transparent; color:var(--color-accent); font-size:24px; line-height:1.6; }
+.demo-inline::after { border:0; }
+.demo-shield { position:fixed; inset:0; z-index:9999; background:rgba(35,31,27,.35); display:flex; align-items:center; justify-content:center; padding:32px; }
+.demo-shield-card { width:100%; max-width:620px; box-sizing:border-box; background:var(--color-background-surface); border-radius:24px; padding:32px; }
+.demo-shield-card .btn { margin-top:24px; }

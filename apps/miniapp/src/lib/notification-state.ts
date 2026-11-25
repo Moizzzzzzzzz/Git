@@ -1,0 +1,3 @@
+export interface NotificationState { status:string;reason:string|null }
+const REASONS:Record<string,string>={NO_CONSENT:'未授权或可用订阅次数不足',NOT_BOUND:'发起业务员尚未绑定微信',TEMPLATE_NOT_CONFIGURED:'微信通知模板尚未配置',WECHAT_NOT_CONFIGURED:'微信通知服务尚未配置',DELIVERY_FAILED:'发送失败，请联系管理员检查',NO_MESSAGE:'通知内容不存在'};
+export function notificationText(s:NotificationState){if(s.status==='SENT')return '微信通知已发送，是否查看以接收端为准';if(s.status==='PENDING')return '微信通知等待发送';if(s.status==='NOT_TRIGGERED')return '整单尚未确认，暂未生成完成通知';if(s.status==='SKIPPED'||s.status==='FAILED')return `微信通知未发送：${REASONS[s.reason??'']??'发送失败，请联系管理员检查'}`;return '微信发送状态暂时无法确定';}

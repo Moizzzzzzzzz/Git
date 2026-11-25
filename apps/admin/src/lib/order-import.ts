@@ -1,0 +1,8 @@
+import {emptyOrderForm,toOrderInput,type OrderForm,type OrderLine} from './orders';
+export interface ImportIssue {code?:string;message:string;sourceRow?:number;sourceSheet?:string}
+export interface ImportGroup {hNo:string;lines:(OrderLine&{sourceRow?:number;sourceSheet?:string;salespersonName?:string|null;totalDeliveryDate?:{isoDate?:string|null}})[];conflict?:boolean;errors?:ImportIssue[];warnings?:ImportIssue[]}
+export interface ImportPreview {previewId:string;sourceHash:string;groups:ImportGroup[];errors:ImportIssue[];warnings:ImportIssue[];canImport:boolean;expiresAt?:string}
+export interface ImportMapping {selected:boolean;form:OrderForm}
+export const mappingForGroup=(g:ImportGroup):ImportMapping=>({selected:false,form:{...emptyOrderForm(),hNo:g.hNo,lines:g.lines.map(l=>({customerOrderNo:l.customerOrderNo??'',productName:l.productName??'',productCode:l.productCode??'',specification:l.specification??'',color:l.color??'',quantity:l.quantity??'',quantityUnit:l.quantityUnit??''}))}});
+export function importSelections(groups:ImportGroup[],mappings:Record<string,ImportMapping>){const selected=groups.filter(g=>mappings[g.hNo]?.selected);if(!selected.length)throw new Error('请勾选本次需要导入的订单');return selected.map(g=>{if(g.conflict)throw new Error(`${g.hNo} 存在冲突，请重新核对`);if(g.errors?.length)throw new Error(`${g.hNo} 尚有校验错误`);const input=toOrderInput(mappings[g.hNo].form);return {hNo:g.hNo,businessDepartmentId:input.businessDepartmentId,supervisorId:input.supervisorId,dueAt:input.dueAt,plan:input.plan};});}
+export const IMPORT_MAX_BYTES=5*1024*1024;

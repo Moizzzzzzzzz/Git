@@ -1,0 +1,13 @@
+import {expect,it} from 'vitest';
+import {emptyOrderForm,toOrderInput} from '../src/lib/orders';
+import {importSelections,mappingForGroup} from '../src/lib/order-import';
+it('business create/update input excludes trusted customer configuration even if stale state contains it',()=>{const f=Object.assign(emptyOrderForm(),{hNo:'H-1',businessDepartmentId:'d',supervisorId:'s',customerId:'untrusted',customerStandardId:null});const body=toOrderInput(f);expect(body).not.toHaveProperty('customerId');expect(body).not.toHaveProperty('customerStandardId');});
+it('VCANS group mappings never carry client-supplied customer authority',()=>{const g={hNo:'H-1',lines:[{customerOrderNo:'PO1',productName:'面料',productCode:null,specification:null,color:null,quantity:'100',quantityUnit:'米'}]};const m=mappingForGroup(g);m.selected=true;Object.assign(m.form,{businessDepartmentId:'d',supervisorId:'s',customerId:'untrusted',customerStandardId:'untrusted',requiredStandardMode:'FACTORY'});const [body]=importSelections([g],{'H-1':m});expect(body).not.toHaveProperty('customerId');expect(body).not.toHaveProperty('customerStandardId');});
+
+import {customerConfigurationInput} from '../src/lib/customer-standard';
+import type {OrderCustomerOptions} from '../src/lib/orders';
+const options:OrderCustomerOptions={customers:[{id:'c',name:'客户',code:'C1'}],customerStandards:[{id:'std',name:'标准',code:'S1',customer:{id:'c',name:'客户',code:'C1'},currentVersion:{id:'v',version:1}}]};
+it('requires the explicit capability even for clearing customer configuration',()=>{expect(()=>customerConfigurationInput(undefined,3,options,'c','std')).toThrow('无权');expect(()=>customerConfigurationInput(false,3,options,'','',true)).toThrow('无权');});
+it('rejects absent, unpublished, and mismatched customer standards',()=>{expect(()=>customerConfigurationInput(true,3,undefined,'c','std')).toThrow('客户');expect(()=>customerConfigurationInput(true,3,{...options,customerStandards:[{...options.customerStandards[0],customer:{id:'other',name:'别的客户',code:'C2'}}]},'c','std')).toThrow('该客户');expect(()=>customerConfigurationInput(true,3,{...options,customerStandards:[{...options.customerStandards[0],currentVersion:null as never}]},'c','std')).toThrow('已发布');});
+it('sends only an explicitly selected trusted pair with optimistic version',()=>{expect(customerConfigurationInput(true,3,options,'c','std')).toEqual({version:3,customerId:'c',customerStandardId:'std'});});
+it('blank inputs do not clear customer configuration unless the separate explicit action is used',()=>{expect(()=>customerConfigurationInput(true,3,options,'','')).toThrow();expect(customerConfigurationInput(true,3,options,'','',true)).toEqual({version:3,customerId:null,customerStandardId:null});});

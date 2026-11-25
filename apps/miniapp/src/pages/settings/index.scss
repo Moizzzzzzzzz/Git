@@ -1,0 +1,6 @@
+ .settings-page { padding-bottom:calc(40px + env(safe-area-inset-bottom)); }
+.settings-title { font-size:36px; font-weight:600; margin:8px 0 28px; }
+.settings-roles { border-top:1px solid var(--color-border); margin-top:14px; padding-top:20px; }
+.settings-link { display:block; width:100%; text-align:left; padding:20px 0 0; margin:0; background:transparent; color:var(--color-text-accent); font-size:28px; font-weight:400; line-height:1.5; white-space:normal; }
+.settings-link::after { border:0; }
+.settings-note { margin-top:16px; }.settings-retry { margin-top:20px; }.settings-logout { margin-top:24px; }

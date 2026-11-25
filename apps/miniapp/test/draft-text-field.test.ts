@@ -1,0 +1,26 @@
+import {afterEach,beforeEach,expect,it,vi} from 'vitest';
+vi.mock('@tarojs/components',()=>({Input:'input',Textarea:'textarea'}));
+import Taro from '@tarojs/taro';
+import {resetStorage,requests} from './taro-mock';
+import {DraftTextField} from '../src/components/DraftTextField';
+import {mutateDraft,loadDraft,type LocalDraft} from '../src/lib/draft';
+import {currentContext} from '../src/lib/session-context';
+import {preserveLocalOnRefresh} from '../src/lib/inspection-refresh';
+beforeEach(()=>{resetStorage();vi.useFakeTimers();});
+afterEach(()=>{vi.clearAllTimers();vi.useRealTimers();});
+it.each([false,true])('saves %s multiline text before blur, survives stale refresh and re-entry',multiline=>{
+ const context=currentContext();
+ const draft={inspectionId:'note',localRev:0,syncedRev:0,baseVersion:1,photos:[],remarks:'',checklist:[{key:'label',status:'NG',note:''}],syncState:'idle'} as unknown as LocalDraft;
+ Taro.setStorageSync('fqc_draft_note',draft);
+ const render=()=>DraftTextField({value:loadDraft('note',context)!.remarks,editable:true,multiline,placeholder:'备注',onChange:text=>{mutateDraft('note',d=>{d.remarks=text;},context);}});
+ expect(render().props.maxlength).toBe(multiline?2000:300);
+ render().props.onInput({detail:{value:'复核'}});
+ render().props.onInput({detail:{value:'复核完成，原照片保留。'}});
+ expect(loadDraft('note',context)!.remarks).toBe('复核完成，原照片保留。');
+ expect(preserveLocalOnRefresh(draft,loadDraft('note',context),{status:'RETURNED',draftVersion:1})).toBe(true);
+ expect(render().props.value).toBe('复核完成，原照片保留。');
+ expect(requests).toHaveLength(0);
+ render().props.onInput({detail:{value:''}});
+ expect(render().props.value).toBe('');
+ expect(Taro.getStorageSync('fqc_demo_active')).toBe('');
+});
