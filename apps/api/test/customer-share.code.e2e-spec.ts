@@ -1,0 +1,61 @@
+import { readFileSync } from 'node:fs';
+import { randomBytes, randomUUID, createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { Test } from '@nestjs/testing';
+import request from 'supertest';
+import sharp from 'sharp';
+import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/bootstrap';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { TokenService } from '../src/auth/token.service';
+import { StorageAdapter } from '../src/media/storage.adapter';
+
+const url=process.env.SHARE_CODE_TEST_DATABASE_URL;
+(url?describe:describe.skip)('分享隔离真实HTTP',()=>{
+ it('仅授权正式已确认报告可创建，预览确认、白名单PDF、旧版与撤回均受限',async()=>{
+  const d=JSON.parse(readFileSync('/PATH/REDACTED','utf8'));
+  const marker=readFileSync('/PATH/REDACTED','utf8').trim();
+  const u=new URL(url!);if(url!==d.url || process.env.DATABASE_URL!==url || u.hostname!=='127.0.0.1' || u.port==='5432' || u.pathname!=='/fqc_share_code_d1ca39a9989b' || decodeURIComponent(u.username)!==d.role)throw Error('拒绝非分享专库');
+  const pixel=await sharp({create:{width:2,height:2,channels:3,background:'#fff'}}).jpeg().toBuffer();
+  const module=await Test.createTestingModule({imports:[AppModule.register({runWorkers:false,disableRateLimit:true})]}).overrideProvider(StorageAdapter).useValue({readBytes:async()=>pixel}).compile();
+  const app=module.createNestApplication({logger:['error']});configureApp(app);await app.init();const db=app.get(PrismaService);
+  try {
+   const identity=await db.$queryRawUnsafe<{db:string;usr:string}[]>('SELECT current_database() AS db,current_user AS usr');
+   const markers=await db.$queryRawUnsafe<{record:Record<string,unknown>}[]>('SELECT row_to_json(m) AS record FROM fqc_share_guard.isolation_marker m');
+   if(identity[0].db!==d.database || identity[0].usr!==d.role || !markers.some(x=>Object.values(x.record).includes(marker)))throw Error('隔离标记不匹配');
+   const suffix=randomUUID().slice(0,8), now=new Date();const role=await db.role.upsert({where:{code:'SALES'},create:{code:'SALES',name:'合成业务'},update:{}});
+   const dep=await db.department.create({data:{code:`SHARE-${suffix}`,name:'合成部门'}});const otherDep=await db.department.create({data:{code:`OTHER-${suffix}`,name:'合成其他部门'}});
+   const user=await db.user.create({data:{employeeNo:`ISS-${suffix}`,name:'合成业务员',departmentId:dep.id,roles:{create:{roleId:role.id,departmentId:dep.id}}}});
+   const other=await db.user.create({data:{employeeNo:`OTH-${suffix}`,name:'合成异部门',departmentId:otherDep.id,roles:{create:{roleId:role.id,departmentId:otherDep.id}}}});
+   const access=await app.get(TokenService).issue(user.id,'ADMIN_WEB',{ip:null,userAgent:null});const outsider=await app.get(TokenService).issue(other.id,'ADMIN_WEB',{ip:null,userAgent:null});
+   const order=await db.vcansOrder.create({data:{hNo:`H-SHARE-${suffix}`,businessDepartmentId:dep.id,createdById:user.id,source:'MANUAL',planMode:'FULL',purpose:'FORMAL',confirmedAt:now,confirmedById:user.id}});
+   const ins=randomUUID();const frozen={hNo:order.hNo,version:1,confirmedAt:now.toISOString(),originalRequiredRolls:1,standardName:'正式标准',plan:{mode:'FULL'},defectNames:{HOLE:'破洞'},lines:[{id:'line-secret',customerOrderNo:'客户单',productName:'合成面料',sourceSnapshot:{price:'秘密价格'}}],rolls:[{lineId:'line-secret',lotNo:'L',rollNo:'R',originalSample:true,result:'PASS',basisHistory:{inspectionId:ins,result:'PASS',systemResult:'FAIL',finalResult:'PASS',finalReason:'复核可接受',submittedAt:now.toISOString(),reviewedAt:now.toISOString(),totalPoints:4,normalizedScore:40,resultSnapshot:{fourPoint:{scoring:{areaUnit:'PER_100_LINEAR_YD'}}},inspection:{remarks:'内部私密备注',defects:[{clientId:'d1',defectTypeCode:'HOLE',positionM:1,lengthCm:2,points:2}],photos:[{kind:'DEFECT',defectClientId:'d1',objectKey:`frozen-inspections/${ins}/photo.jpg`}]}}}]};
+   await db.vcansReportVersion.create({data:{orderId:order.id,version:1,confirmedById:user.id,confirmedAt:now,snapshot:frozen}});
+   const agent=request(app.getHttpServer());const base=`/api/orders/${order.id}/customer-shares`;const auth=(x:request.Test,t=access.accessToken)=>x.set('Authorization',`Bearer ${t}`);
+   expect((await agent.get(base)).status).toBe(401);expect((await auth(agent.get(`${base}/preview`),outsider.accessToken)).status).toBe(403);
+   const preview=await auth(agent.get(`${base}/preview`));expect(preview.status).toBe(200);expect(preview.body).toMatchObject({reportVersion:1,photoCount:1,requiresConfirmation:true,reviewNotes:[{rollNo:'R',reason:'复核可接受'}]});
+   expect((await auth(agent.post(base)).send({reportVersion:1,acknowledgeContent:true})).status).toBe(400);
+   const previewPdf=await auth(agent.get(`${base}/preview/pdf?reportVersion=1`));expect(previewPdf.status).toBe(200);expect(previewPdf.headers['cache-control']).toContain('no-store');
+   await expect(db.vcansReportVersion.update({where:{orderId_version:{orderId:order.id,version:1}},data:{snapshot:{...frozen,standardName:'更改后内容'}}})).rejects.toThrow();
+   expect((await auth(agent.get(`${base}/preview/pdf?reportVersion=2`))).status).toBe(409);
+   expect((await auth(agent.post(base)).send({reportVersion:1})).status).toBe(400);expect((await auth(agent.post(base)).send({reportVersion:2,acknowledgeContent:true})).status).toBe(409);
+   const created=await auth(agent.post(base)).send({reportVersion:1,acknowledgeContent:true});expect(created.status).toBe(201);expect(created.headers['cache-control']).toContain('no-store');const token=created.body.token;expect(token).toMatch(/^ysr_[A-Za-z0-9_-]{43}$/);
+   const saved=await db.vcansReportShare.findUniqueOrThrow({where:{id:created.body.id}});expect(saved.tokenHash).toBe(createHash('sha256').update(token).digest('hex'));expect(JSON.stringify(saved)).not.toContain(token);
+   expect(saved.expiresAt.getTime()-saved.createdAt.getTime()).toBe(7*24*60*60*1000);
+   const expiredToken=`ysr_${randomBytes(32).toString('base64url')}`;const old=new Date(Date.now()-120000);await db.vcansReportShare.create({data:{reportVersionId:saved.reportVersionId,issuedById:user.id,tokenHash:createHash('sha256').update(expiredToken).digest('hex'),createdAt:old,expiresAt:new Date(old.getTime()+1000),frozenView:saved.frozenView as never,privatePhotoRefs:saved.privatePhotoRefs as never}});expect((await agent.get('/api/customer-shares/current').set('X-Fabricqc-Share-Token',expiredToken)).status).toBe(404);
+   const publicGet=()=>agent.get('/api/customer-shares/current').set('X-Fabricqc-Share-Token',token);const publicView=await publicGet();expect(publicView.status).toBe(200);expect(publicView.headers['cache-control']).toContain('no-store');const body=JSON.stringify(publicView.body);for(const secret of ['内部私密备注','秘密价格','frozen-inspections','line-secret',ins,user.name])expect(body).not.toContain(secret);
+   expect((await agent.get('/api/customer-shares/current').set('X-Fabricqc-Share-Token',token.slice(4))).status).toBe(404);
+   expect((await agent.get('/api/customer-shares/current')).status).toBe(404);expect((await agent.get('/api/customer-shares/current/photos/0').set('X-Fabricqc-Share-Token',token)).status).toBe(200);
+   const pdf=await agent.get('/api/customer-shares/current/pdf').set('X-Fabricqc-Share-Token',token);expect(pdf.status).toBe(200);expect(pdf.headers['content-type']).toContain('application/pdf');
+   const list=await auth(agent.get(base));expect(list.status).toBe(200);expect(JSON.stringify(list.body)).not.toContain(token);expect((await auth(agent.post(`${base}/${created.body.id}/revoke`),outsider.accessToken)).status).toBe(403);
+   await db.vcansOrder.update({where:{id:order.id},data:{confirmedAt:null}});expect((await publicGet()).body.reportVersion).toBe(1);expect((await auth(agent.post(base)).send({reportVersion:1,acknowledgeContent:true})).status).toBe(409);
+   const detailDuringRevision=await auth(agent.get(`/api/orders/${order.id}`));expect(detailDuringRevision.status).toBe(200);expect(detailDuringRevision.body.capabilities.canShareCustomer).toBe(false);expect(detailDuringRevision.body.capabilities.canManageCustomerShares).toBe(true);
+   const newer=new Date(now.getTime()+1000);const pendingFrozen={...frozen,version:2,confirmedAt:newer.toISOString(),rolls:[{...frozen.rolls[0],additionalSample:true,pendingAdditional:true,additionalHistory:[{result:'INCOMPLETE'}]}]};
+   await db.vcansReportVersion.create({data:{orderId:order.id,version:2,confirmedById:user.id,confirmedAt:newer,snapshot:pendingFrozen}});await db.vcansOrder.update({where:{id:order.id},data:{confirmedAt:newer}});expect((await publicGet()).body.reportVersion).toBe(1);
+   const p2=await auth(agent.get(`${base}/preview/pdf?reportVersion=2`));expect(p2.status).toBe(200);const p2text=spawnSync('python3',['-c',"import sys,fitz; d=fitz.open(stream=sys.stdin.buffer.read(),filetype='pdf');print(' '.join(p.get_text() for p in d))"],{input:p2.body,encoding:'utf8'});expect(p2text.status).toBe(0);expect(p2text.stdout).toContain('追加检验待处理');expect(p2text.stdout).not.toContain('inspection-0-0');
+   const shared2=await auth(agent.post(base)).send({reportVersion:2,acknowledgeContent:true});expect(shared2.status).toBe(201);const shared2view=await agent.get('/api/customer-shares/current').set('X-Fabricqc-Share-Token',shared2.body.token);expect(shared2view.body.report.rolls[0].pendingAdditionalInspectionCount).toBe(1);expect(shared2view.body.report.pendingActions).toContain('卷 R：追加检验待处理');
+   const revoke=await auth(agent.post(`${base}/${created.body.id}/revoke`));expect(revoke.status).toBe(201);expect((await publicGet()).status).toBe(404);
+   const logs=await db.auditLog.findMany({where:{entityId:created.body.id}});expect(logs.map(x=>x.action)).toEqual(expect.arrayContaining(['customer_share.create','customer_share.revoke']));expect(JSON.stringify(logs)).not.toContain(token);expect(JSON.stringify(logs)).not.toContain('复核可接受');
+  } finally {await app.close();}
+ });
+});

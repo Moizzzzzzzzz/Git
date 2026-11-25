@@ -1,0 +1,626 @@
+{
+  "standardSnapshot": {
+    "customer": null,
+    "fourPoint": {
+      "name": "测试策略",
+      "rules": {
+        "fourPoint": {
+          "bands": [
+            {
+              "maxCm": 7.62,
+              "points": 1
+            },
+            {
+              "maxCm": 15.24,
+              "points": 2
+            },
+            {
+              "maxCm": 22.86,
+              "points": 3
+            },
+            {
+              "maxCm": null,
+              "points": 4
+            }
+          ],
+          "areaUnit": "PER_100_SQ_YD",
+          "specialRules": [
+            {
+              "mode": "BY_SIZE",
+              "note": "破洞：≤1 英寸 2 分，>1 英寸 4 分",
+              "bands": [
+                {
+                  "maxCm": 2.54,
+                  "points": 2
+                },
+                {
+                  "maxCm": null,
+                  "points": 4
+                }
+              ],
+              "defectTypeCodes": [
+                "HOLE"
+              ]
+            },
+            {
+              "mode": "PER_LINEAR_UNIT",
+              "note": "连续性疵点：每码 4 分",
+              "points": 4,
+              "defectTypeCodes": [
+                "SHADING",
+                "CONT_STREAK"
+              ]
+            }
+          ],
+          "dimensionBasis": "MAX_DIMENSION",
+          "maxPointsPerLinearUnit": {
+            "maxPoints": 4,
+            "unitLengthM": 0.9144
+          }
+        },
+        "thresholds": {
+          "maxNormalizedPoints": 40
+        },
+        "applicability": {
+          "fiber": [
+            "NYLON"
+          ],
+          "structure": [
+            "KNIT"
+          ]
+        },
+        "requiredScope": null,
+        "schemaVersion": 1,
+        "failOnSeverity": "CRITICAL",
+        "checklistPolicies": [
+          {
+            "onNa": "INCONCLUSIVE",
+            "onNg": "FAIL_ON_NG",
+            "onMissing": "INCONCLUSIVE",
+            "checklistKey": "color"
+          },
+          {
+            "onNa": "ALLOW",
+            "onNg": "RECORD_ONLY",
+            "onMissing": "ALLOW",
+            "checklistKey": "feel"
+          },
+          {
+            "onNa": "ALLOW",
+            "onNg": "REVIEW_ON_NG",
+            "onMissing": "INCONCLUSIVE",
+            "checklistKey": "label"
+          }
+        ],
+        "measurementLimits": [],
+        "requireDefectPhoto": false,
+        "forbiddenDefectTypes": [],
+        "maxDefectCountByType": {}
+      },
+      "version": 1,
+      "versionId": "c775485f-5e45-4828-8481-fb394279f4db",
+      "isDevDefault": true
+    }
+  },
+  "templateSnapshot": {
+    "checklist": [
+      {
+        "key": "color",
+        "label": "对色",
+        "required": true
+      },
+      {
+        "key": "feel",
+        "label": "手感",
+        "required": false
+      },
+      {
+        "key": "label",
+        "label": "标签",
+        "required": false
+      }
+    ],
+    "templateId": "fa2a9f07-b274-48bd-bac2-4ae512a1fa85",
+    "measurements": [
+      {
+        "key": "roll_length",
+        "unit": "m",
+        "label": "卷长",
+        "required": true,
+        "minReadings": 1
+      }
+    ],
+    "applicability": {
+      "fiber": [
+        "NYLON"
+      ],
+      "structure": [
+        "KNIT"
+      ]
+    },
+    "templateVersion": 1,
+    "photoCheckpoints": []
+  },
+  "specSnapshot": {
+    "gsm": null,
+    "color": null,
+    "lotNo": null,
+    "rollNo": "QA-POL-01",
+    "widthCm": 150,
+    "dyeLotNo": null,
+    "fabricId": "c39d0c58-c459-4487-ba09-4a59ea1b0c7d",
+    "colorCode": null,
+    "fabricCode": "QA-POL-F",
+    "fabricName": "测试布",
+    "coatingType": null,
+    "composition": null,
+    "fabricNameEn": null,
+    "nominalLengthM": 10,
+    "weaveStructure": null,
+    "cuttableWidthCm": null
+  },
+  "base": {
+    "mode": "MANUAL",
+    "scope": "FULL",
+    "segments": [
+      {
+        "startM": 0,
+        "endM": 10
+      }
+    ],
+    "measurements": [],
+    "defects": [],
+    "photos": []
+  },
+  "comparisons": [
+    {
+      "name": "FAIL_ON_NG",
+      "checklist": [
+        {
+          "key": "color",
+          "status": "NG"
+        },
+        {
+          "key": "feel",
+          "status": "OK"
+        },
+        {
+          "key": "label",
+          "status": "OK"
+        }
+      ],
+      "evaluation": {
+        "engineVersion": "1.0.0",
+        "scope": "FULL",
+        "inspectedLengthM": 10,
+        "widthUsedCm": 150,
+        "widthBasis": "SPEC_WIDTH",
+        "inspectedAreaM2": 15,
+        "defectCount": 0,
+        "fourPoint": {
+          "versionId": "c775485f-5e45-4828-8481-fb394279f4db",
+          "name": "测试策略 v1",
+          "result": "FAIL",
+          "scoring": {
+            "areaUnit": "PER_100_SQ_YD",
+            "linearUnitM": 0.9144,
+            "defectScores": [],
+            "rawPoints": 0,
+            "totalPoints": 0,
+            "capReduction": 0,
+            "normalizedPoints": 0
+          },
+          "checks": [
+            {
+              "code": "MAX_NORMALIZED_POINTS",
+              "label": "标准化得分",
+              "status": "PASS",
+              "message": "标准化得分 0 分/100平方码，未超过阈值",
+              "actual": 0,
+              "limit": "≤ 40"
+            },
+            {
+              "code": "SEVERITY",
+              "label": "严重缺陷否决",
+              "status": "PASS",
+              "message": "无致命及以上疵点",
+              "actual": 0,
+              "limit": 0
+            },
+            {
+              "code": "CHECKLIST:color",
+              "label": "对色",
+              "status": "FAIL",
+              "message": "对色：NG，不符合标准",
+              "actual": "NG",
+              "limit": null
+            },
+            {
+              "code": "CHECKLIST:feel",
+              "label": "手感",
+              "status": "PASS",
+              "message": "手感：OK",
+              "actual": "OK",
+              "limit": null
+            },
+            {
+              "code": "CHECKLIST:label",
+              "label": "标签",
+              "status": "PASS",
+              "message": "标签：OK",
+              "actual": "OK",
+              "limit": null
+            }
+          ]
+        },
+        "customer": null,
+        "overall": {
+          "result": "FAIL",
+          "reasons": [
+            "[测试策略 v1] 对色：NG，不符合标准"
+          ]
+        },
+        "warnings": [
+          "未测量有效门幅且无可裁门幅规格，面积按规格门幅计算"
+        ]
+      }
+    },
+    {
+      "name": "RECORD_ONLY",
+      "checklist": [
+        {
+          "key": "color",
+          "status": "OK"
+        },
+        {
+          "key": "feel",
+          "status": "NG"
+        },
+        {
+          "key": "label",
+          "status": "OK"
+        }
+      ],
+      "evaluation": {
+        "engineVersion": "1.0.0",
+        "scope": "FULL",
+        "inspectedLengthM": 10,
+        "widthUsedCm": 150,
+        "widthBasis": "SPEC_WIDTH",
+        "inspectedAreaM2": 15,
+        "defectCount": 0,
+        "fourPoint": {
+          "versionId": "c775485f-5e45-4828-8481-fb394279f4db",
+          "name": "测试策略 v1",
+          "result": "PASS",
+          "scoring": {
+            "areaUnit": "PER_100_SQ_YD",
+            "linearUnitM": 0.9144,
+            "defectScores": [],
+            "rawPoints": 0,
+            "totalPoints": 0,
+            "capReduction": 0,
+            "normalizedPoints": 0
+          },
+          "checks": [
+            {
+              "code": "MAX_NORMALIZED_POINTS",
+              "label": "标准化得分",
+              "status": "PASS",
+              "message": "标准化得分 0 分/100平方码，未超过阈值",
+              "actual": 0,
+              "limit": "≤ 40"
+            },
+            {
+              "code": "SEVERITY",
+              "label": "严重缺陷否决",
+              "status": "PASS",
+              "message": "无致命及以上疵点",
+              "actual": 0,
+              "limit": 0
+            },
+            {
+              "code": "CHECKLIST:color",
+              "label": "对色",
+              "status": "PASS",
+              "message": "对色：OK",
+              "actual": "OK",
+              "limit": null
+            },
+            {
+              "code": "CHECKLIST:label",
+              "label": "标签",
+              "status": "PASS",
+              "message": "标签：OK",
+              "actual": "OK",
+              "limit": null
+            }
+          ]
+        },
+        "customer": null,
+        "overall": {
+          "result": "PASS",
+          "reasons": []
+        },
+        "warnings": [
+          "未测量有效门幅且无可裁门幅规格，面积按规格门幅计算",
+          "[测试策略 v1] 手感为异常，仅记录，未参与判定"
+        ]
+      }
+    },
+    {
+      "name": "REVIEW_ON_NG",
+      "checklist": [
+        {
+          "key": "color",
+          "status": "OK"
+        },
+        {
+          "key": "feel",
+          "status": "OK"
+        },
+        {
+          "key": "label",
+          "status": "NG"
+        }
+      ],
+      "evaluation": {
+        "engineVersion": "1.0.0",
+        "scope": "FULL",
+        "inspectedLengthM": 10,
+        "widthUsedCm": 150,
+        "widthBasis": "SPEC_WIDTH",
+        "inspectedAreaM2": 15,
+        "defectCount": 0,
+        "fourPoint": {
+          "versionId": "c775485f-5e45-4828-8481-fb394279f4db",
+          "name": "测试策略 v1",
+          "result": "INCONCLUSIVE",
+          "scoring": {
+            "areaUnit": "PER_100_SQ_YD",
+            "linearUnitM": 0.9144,
+            "defectScores": [],
+            "rawPoints": 0,
+            "totalPoints": 0,
+            "capReduction": 0,
+            "normalizedPoints": 0
+          },
+          "checks": [
+            {
+              "code": "MAX_NORMALIZED_POINTS",
+              "label": "标准化得分",
+              "status": "PASS",
+              "message": "标准化得分 0 分/100平方码，未超过阈值",
+              "actual": 0,
+              "limit": "≤ 40"
+            },
+            {
+              "code": "SEVERITY",
+              "label": "严重缺陷否决",
+              "status": "PASS",
+              "message": "无致命及以上疵点",
+              "actual": 0,
+              "limit": 0
+            },
+            {
+              "code": "CHECKLIST:color",
+              "label": "对色",
+              "status": "PASS",
+              "message": "对色：OK",
+              "actual": "OK",
+              "limit": null
+            },
+            {
+              "code": "CHECKLIST:feel",
+              "label": "手感",
+              "status": "PASS",
+              "message": "手感：OK",
+              "actual": "OK",
+              "limit": null
+            },
+            {
+              "code": "CHECKLIST:label",
+              "label": "标签",
+              "status": "INCONCLUSIVE",
+              "message": "标签：NG，需人工复核",
+              "actual": "NG",
+              "limit": null
+            }
+          ]
+        },
+        "customer": null,
+        "overall": {
+          "result": "INCONCLUSIVE",
+          "reasons": [
+            "[测试策略 v1] 标签：NG，需人工复核"
+          ]
+        },
+        "warnings": [
+          "未测量有效门幅且无可裁门幅规格，面积按规格门幅计算"
+        ]
+      }
+    },
+    {
+      "name": "NA_INCONCLUSIVE",
+      "checklist": [
+        {
+          "key": "color",
+          "status": "NA"
+        },
+        {
+          "key": "feel",
+          "status": "OK"
+        },
+        {
+          "key": "label",
+          "status": "OK"
+        }
+      ],
+      "evaluation": {
+        "engineVersion": "1.0.0",
+        "scope": "FULL",
+        "inspectedLengthM": 10,
+        "widthUsedCm": 150,
+        "widthBasis": "SPEC_WIDTH",
+        "inspectedAreaM2": 15,
+        "defectCount": 0,
+        "fourPoint": {
+          "versionId": "c775485f-5e45-4828-8481-fb394279f4db",
+          "name": "测试策略 v1",
+          "result": "INCONCLUSIVE",
+          "scoring": {
+            "areaUnit": "PER_100_SQ_YD",
+            "linearUnitM": 0.9144,
+            "defectScores": [],
+            "rawPoints": 0,
+            "totalPoints": 0,
+            "capReduction": 0,
+            "normalizedPoints": 0
+          },
+          "checks": [
+            {
+              "code": "MAX_NORMALIZED_POINTS",
+              "label": "标准化得分",
+              "status": "PASS",
+              "message": "标准化得分 0 分/100平方码，未超过阈值",
+              "actual": 0,
+              "limit": "≤ 40"
+            },
+            {
+              "code": "SEVERITY",
+              "label": "严重缺陷否决",
+              "status": "PASS",
+              "message": "无致命及以上疵点",
+              "actual": 0,
+              "limit": 0
+            },
+            {
+              "code": "CHECKLIST:color",
+              "label": "对色",
+              "status": "INCONCLUSIVE",
+              "message": "对色：NA，需人工复核",
+              "actual": "NA",
+              "limit": null
+            },
+            {
+              "code": "CHECKLIST:feel",
+              "label": "手感",
+              "status": "PASS",
+              "message": "手感：OK",
+              "actual": "OK",
+              "limit": null
+            },
+            {
+              "code": "CHECKLIST:label",
+              "label": "标签",
+              "status": "PASS",
+              "message": "标签：OK",
+              "actual": "OK",
+              "limit": null
+            }
+          ]
+        },
+        "customer": null,
+        "overall": {
+          "result": "INCONCLUSIVE",
+          "reasons": [
+            "[测试策略 v1] 对色：NA，需人工复核"
+          ]
+        },
+        "warnings": [
+          "未测量有效门幅且无可裁门幅规格，面积按规格门幅计算"
+        ]
+      }
+    },
+    {
+      "name": "NA_ALLOW",
+      "checklist": [
+        {
+          "key": "color",
+          "status": "OK"
+        },
+        {
+          "key": "feel",
+          "status": "NA"
+        },
+        {
+          "key": "label",
+          "status": "OK"
+        }
+      ],
+      "evaluation": {
+        "engineVersion": "1.0.0",
+        "scope": "FULL",
+        "inspectedLengthM": 10,
+        "widthUsedCm": 150,
+        "widthBasis": "SPEC_WIDTH",
+        "inspectedAreaM2": 15,
+        "defectCount": 0,
+        "fourPoint": {
+          "versionId": "c775485f-5e45-4828-8481-fb394279f4db",
+          "name": "测试策略 v1",
+          "result": "PASS",
+          "scoring": {
+            "areaUnit": "PER_100_SQ_YD",
+            "linearUnitM": 0.9144,
+            "defectScores": [],
+            "rawPoints": 0,
+            "totalPoints": 0,
+            "capReduction": 0,
+            "normalizedPoints": 0
+          },
+          "checks": [
+            {
+              "code": "MAX_NORMALIZED_POINTS",
+              "label": "标准化得分",
+              "status": "PASS",
+              "message": "标准化得分 0 分/100平方码，未超过阈值",
+              "actual": 0,
+              "limit": "≤ 40"
+            },
+            {
+              "code": "SEVERITY",
+              "label": "严重缺陷否决",
+              "status": "PASS",
+              "message": "无致命及以上疵点",
+              "actual": 0,
+              "limit": 0
+            },
+            {
+              "code": "CHECKLIST:color",
+              "label": "对色",
+              "status": "PASS",
+              "message": "对色：OK",
+              "actual": "OK",
+              "limit": null
+            },
+            {
+              "code": "CHECKLIST:feel",
+              "label": "手感",
+              "status": "PASS",
+              "message": "手感：NA",
+              "actual": "NA",
+              "limit": null
+            },
+            {
+              "code": "CHECKLIST:label",
+              "label": "标签",
+              "status": "PASS",
+              "message": "标签：OK",
+              "actual": "OK",
+              "limit": null
+            }
+          ]
+        },
+        "customer": null,
+        "overall": {
+          "result": "PASS",
+          "reasons": []
+        },
+        "warnings": [
+          "未测量有效门幅且无可裁门幅规格，面积按规格门幅计算"
+        ]
+      }
+    }
+  ]
+}

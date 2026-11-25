@@ -1,0 +1,7 @@
+.defect-page {
+  .types { display:flex; flex-wrap:wrap; gap:12px; }
+  .type { width:calc(33.33% - 8px); height:88px; border-radius:16px; border:2px solid var(--color-border); background:var(--field-background); display:flex; align-items:center; justify-content:center; font-size:27px; box-sizing:border-box; }
+  .type.active { border-color:var(--color-accent); background:var(--color-accent-muted); color:var(--color-text-accent); font-weight:500; }
+  .grid2 { display:flex; gap:16px; } .grid2 .field { flex:1; min-width:0; }
+  .big { font-size:38px; height:100px; } .flex1 { flex:1; min-width:0; }
+}
