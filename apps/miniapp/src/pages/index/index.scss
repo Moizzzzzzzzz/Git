@@ -1,0 +1,44 @@
+// Astryx semantic hierarchy adapted to Taro: one primary action, sections and divided rows.
+.workspace {
+  min-height:100vh; box-sizing:border-box; padding:var(--spacing-5) var(--spacing-4) calc(144px + env(safe-area-inset-bottom));
+  background:var(--color-background-body); color:var(--color-text-primary);
+}
+.workspace-brand { display:flex; align-items:center; gap:var(--spacing-2); font-size:var(--text-supporting-size); font-weight:500; margin-bottom:var(--spacing-6); }
+.workspace-mark { display:flex; align-items:center; justify-content:center; width:44px; height:44px; border-radius:var(--radius-element); background:var(--color-accent); color:var(--color-on-accent); }
+.workspace-brand-caption { margin-left:auto; font-weight:400; color:var(--color-text-secondary); }
+.workspace-heading { display:flex; align-items:center; gap:var(--spacing-4); margin-bottom:var(--spacing-5); }
+.workspace-person { min-width:0; flex:1; }
+.workspace-eyebrow { color:var(--color-text-secondary); font-size:var(--text-supporting-size); margin-bottom:var(--spacing-1); }
+.workspace-title { font-size:var(--text-heading-1-size); font-weight:600; line-height:1.35; overflow-wrap:anywhere; }
+.workspace-subtitle { color:var(--color-text-secondary); font-size:var(--text-supporting-size); margin-top:var(--spacing-2); overflow-wrap:anywhere; }
+.workspace-avatar { width:80px; height:80px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:var(--color-accent-muted); color:var(--color-text-accent); border-radius:var(--radius-full); font-size:var(--text-heading-2-size); font-weight:500; }
+.workspace-focus { padding:var(--spacing-4); border-radius:var(--radius-container); background:var(--color-background-surface); border:1px solid var(--color-border); }
+.workspace-focus-tag { color:var(--color-text-accent); font-size:var(--text-supporting-size); font-weight:500; margin-bottom:var(--spacing-3); }
+.workspace-focus-title { font-size:var(--text-heading-2-size); font-weight:500; line-height:1.4; }
+.workspace-focus-copy { color:var(--color-text-secondary); font-size:var(--text-body-size); line-height:1.6; margin-top:var(--spacing-2); }
+.workspace-primary { margin-top:var(--spacing-4); width:100%; min-height:88px; border-radius:var(--radius-element); font-size:var(--text-body-size); gap:var(--spacing-2); }
+.workspace-metrics { display:flex; gap:var(--spacing-3); margin-top:var(--spacing-4); padding:var(--spacing-4) 0; border-bottom:1px solid var(--color-border); }
+.workspace-metric { flex:1; min-width:0; text-align:center; }
+.workspace-metric-value { font-size:36px; font-weight:500; line-height:1.2; }
+.workspace-metric-value text { font-size:var(--text-supporting-size); font-weight:400; color:var(--color-text-secondary); margin-left:var(--spacing-1); }
+.workspace-metric-label { font-size:var(--text-supporting-size); color:var(--color-text-secondary); margin-top:var(--spacing-2); }
+.workspace-section { margin-top:var(--spacing-6); }
+.workspace-section-title { font-size:var(--text-heading-3-size); font-weight:500; margin-bottom:var(--spacing-2); }
+.workspace-actions { background:var(--color-background-surface); border-radius:var(--radius-container); padding:0 var(--spacing-4); }
+.workspace-action { display:flex; align-items:center; gap:var(--spacing-3); padding:var(--spacing-4) 0; min-height:88px; }
+.workspace-action + .workspace-action { border-top:1px solid var(--color-border); }
+.workspace-action-icon { width:64px; height:64px; display:flex; align-items:center; justify-content:center; background:var(--color-accent-muted); border-radius:var(--radius-element); flex-shrink:0; }
+.workspace-action-icon image { width:36px; height:36px; }
+.workspace-action-copy { flex:1; min-width:0; }
+.workspace-action-title, .workspace-task-title { font-size:var(--text-body-size); font-weight:500; overflow-wrap:anywhere; }
+.workspace-action-note { font-size:var(--text-supporting-size); color:var(--color-text-secondary); line-height:1.5; margin-top:var(--spacing-1); overflow-wrap:anywhere; }
+.workspace-arrow { font-size:40px; color:var(--color-text-secondary); }
+.workspace-task { padding:var(--spacing-3) 0; border-bottom:1px solid var(--color-border); }
+.workspace-note { margin-top:var(--spacing-5); color:var(--color-text-secondary); font-size:var(--text-supporting-size); line-height:1.6; }
+.workspace-note-title { font-weight:500; margin-bottom:var(--spacing-1); }
+
+.workspace-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; padding:24px; }
+.workspace-action { flex-direction:column; text-align:center; padding:16px 8px; gap:16px; }
+.workspace-action + .workspace-action { border-top:0; }
+.workspace-action-copy { width:100%; }
+.workspace-arrow { display:none; }

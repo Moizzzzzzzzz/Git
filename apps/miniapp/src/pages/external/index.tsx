@@ -1,0 +1,27 @@
+import { withDemoBoundary } from '@/components/DemoContextBar';
+import { usePageApi } from '@/lib/use-page-context';
+import { Button, Input, Picker, Text, Textarea, View } from '@tarojs/components';
+import Taro from '@tarojs/taro';
+import { useEffect, useState } from 'react';
+import { api, errorText } from '@/lib/api';
+
+type Option = { id: string; name?: string; nameZh?: string; code?: string; employeeNo?: string; isActive?: boolean; currentVersion?: { isDevDefault?: boolean } | null };
+function ExternalTask() {
+ const api=usePageApi();
+  const [customerStandards, setCustomerStandards] = useState<Option[]>([]); const [customerStandard, setCustomerStandard] = useState(-1);
+  const [fabrics, setFabrics] = useState<Option[]>([]); const [reviewers, setReviewers] = useState<Option[]>([]); const [standards, setStandards] = useState<Option[]>([]); const [templates, setTemplates] = useState<Option[]>([]);
+  const [fabric, setFabric] = useState(-1); const [reviewer, setReviewer] = useState(-1); const [standard, setStandard] = useState(-1); const [template, setTemplate] = useState(-1);
+  const [title, setTitle] = useState(''); const [factory, setFactory] = useState(''); const [rolls, setRolls] = useState(''); const [notes, setNotes] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  useEffect(() => { Promise.all([api.get<{items: Option[]}>('/fabrics?pageSize=200'), api.get<Option[]>('/tasks/external/reviewers'), api.get<Option[]>('/standards?kind=FOUR_POINT'), api.get<Option[]>('/templates'), api.get<Option[]>('/standards?kind=CUSTOMER')]).then(([f,r,s,t,c]) => { setFabrics(f.items.filter(x => x.isActive !== false)); setReviewers(r); setStandards(s.filter(x => x.currentVersion)); setTemplates(t.filter(x => x.isActive !== false)); setCustomerStandards(c.filter(x => x.currentVersion)); }).catch(e => setError(errorText(e))); }, []);
+  const choose = (label: string, items: Option[], value: number, set: (n: number) => void) => <View className="field"><View className="label">{label}</View>{!items.length ? <View className="warn-box">{label === '审核主管' ? '暂无其他可选审核主管，请管理员添加具备审核权限的员工。' : label === '客户标准（选填）' ? '暂无客户标准，可不选择。' : `暂无可选${label}，请管理员在后台配置。`}</View> : <Picker mode="selector" range={items.map(x => `${x.code ? `${x.code} · ` : ''}${x.nameZh ?? x.name ?? ''}${x.employeeNo ? ` (${x.employeeNo})` : ''}`)} value={Math.max(value,0)} onChange={e => set(Number(e.detail.value))}><View className={`picker-value${value >= 0 ? '' : ' is-placeholder'}`}>{value >= 0 ? `${items[value]?.code ? `${items[value].code} · ` : ''}${items[value]?.nameZh ?? items[value]?.name ?? ''}` : `请选择${label}`}</View></Picker>}</View>;
+  async function submit() {
+    const list = rolls.split(/[\n,，]+/).map(x => x.trim()).filter(Boolean);
+    if (!title.trim() || !factory.trim() || fabric < 0 || reviewer < 0 || standard < 0 || template < 0 || !list.length) { setError('请填写任务名称、外厂名称、卷号，并选择面料、主管、标准和模板。'); return; }
+    setBusy(true); setError('');
+    try { const r = await api.post<{id: string}>('/tasks/external', { title: title.trim(), factoryName: factory.trim(), fabricId: fabrics[fabric].id, reviewerId: reviewers[reviewer].id, fourPointStandardId: standards[standard].id, customerStandardId: customerStandard >= 0 ? customerStandards[customerStandard].id : null, templateId: templates[template].id, rolls: list.map(rollNo => ({ rollNo })), notes: notes.trim() || null }); await Taro.redirectTo({ url: `/pages/task/index?id=${r.id}` }); }
+    catch (e) { setError(errorText(e)); } finally { setBusy(false); }
+  }
+  return <View className="container"><View className="page-intro"><View className="page-intro-kicker">EXTERNAL · 外厂验布</View><View className="page-intro-title">无二维码也能验布</View><View className="page-intro-note">填写外厂卷号创建本人任务，提交后交主管审核。</View></View>{error && <View className="error-box">{error}</View>}<View className="card"><View className="field"><View className="label">任务名称</View><Input placeholderClass="field-placeholder" className="input" value={title} onInput={e => setTitle(e.detail.value)} placeholder="填写任务名称" /></View><View className="field"><View className="label">外厂名称</View><Input placeholderClass="field-placeholder" className="input" value={factory} onInput={e => setFactory(e.detail.value)} placeholder="填写工厂名称" /></View>{choose('面料',fabrics,fabric,setFabric)}{choose('审核主管',reviewers,reviewer,setReviewer)}{choose('四分制标准',standards,standard,setStandard)}{standard >= 0 && standards[standard]?.currentVersion?.isDevDefault && <View className="warn-box">当前是开发测试默认标准，正式使用前请质量负责人确认并发布适用标准。</View>}{choose('客户标准（选填）',customerStandards,customerStandard,setCustomerStandard)}{customerStandard >= 0 && <Text className="muted" onClick={() => setCustomerStandard(-1)}>清除客户标准</Text>}{choose('检验模板',templates,template,setTemplate)}<View className="field"><View className="label">外厂卷号或匹号（每行一个）</View><Textarea placeholderClass="field-placeholder" className="textarea" value={rolls} onInput={e => setRolls(e.detail.value)} placeholder="每行填写一个卷号" /></View><View className="field"><View className="label">备注（选填）</View><Input placeholderClass="field-placeholder" className="input" value={notes} onInput={e => setNotes(e.detail.value)} /></View><Text className="muted">卷号在系统中不可重复；如提示重复，请联系管理员核对。</Text></View><Button className="btn" loading={busy} disabled={busy} onClick={() => void submit()}>创建并开始验布</Button></View>;
+}
+
+export default withDemoBoundary(ExternalTask);

@@ -1,0 +1,8 @@
+.task-page {
+  .task-hero { background:var(--color-background-surface); border-radius:28px; padding:30px; color:var(--text-primary); margin-bottom:20px; }
+  .task-kicker { font-size:26px; letter-spacing:2px; color:var(--text-primary); font-weight:500; }
+  .task-hero-title { font-size:36px; font-weight:500; margin:14px 0 7px; }
+  .task-hero-meta { color:var(--text-primary); font-size:26px; }
+  .task-section-title { font-size:30px; font-weight:500; margin:32px 4px 18px; }
+  .task-section-title text { font-size:26px; color:var(--text-secondary); font-weight:400; margin-left:14px; }
+}
